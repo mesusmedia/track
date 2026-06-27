@@ -11,7 +11,7 @@ export async function loadCrmData(clientId: string) {
       .order("position", { ascending: true }),
     supabase
       .from("leads")
-      .select("id, name, phone, stage_id, revenue, utm_source")
+      .select("id, name, phone, stage_id, revenue, utm_source, campaign_name, adset_name, ad_name")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false }),
     supabase

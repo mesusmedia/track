@@ -147,6 +147,42 @@ npm run lint
   Ver `hasMetaAdsConfigured` em `loadCampaigns` — sinaliza quando o cliente
   tem conta Meta Ads cadastrada, mas a página ainda não cruza com gasto.
 
+## Atribuição de anúncio (Fase 6c — substitui pipeline n8n)
+
+- A agência já tinha um pipeline próprio (n8n + RabbitMQ + Google Sheets +
+  CRM externo) que resolve qual anúncio/conjunto/campanha gerou um clique-
+  pra-WhatsApp. Essa plataforma absorve essa lógica.
+- **Achado importante**: o campo `contextInfo.externalAdReply.sourceId` (não
+  o `ctwa_clid`) é o ID do objeto do anúncio no Graph API — dá pra consultar
+  `GET /{sourceId}/insights?fields=campaign_name,adset_name,ad_name,ad_id,account_name`
+  e pegar os nomes direto (`src/lib/meta/ads-insights.ts`). O `ctwa_clid` é
+  outro campo, usado só pra mandar de volta pro Meta via CAPI (atribuição
+  dentro do Ads Manager) — os dois aparecem juntos no mesmo `externalAdReply`.
+- **Esse dado não sobrevive no Chatwoot** — o Chatwoot normaliza a mensagem
+  pro formato dele e não repassa esse contexto nativo do WhatsApp. Por isso
+  existe um **segundo webhook**, `/api/webhook/evolution` (evento nativo
+  `messages.upsert`, registrado em paralelo ao que já existe pro RabbitMQ —
+  os dois canais coexistem sem conflito), que captura isso antes do Chatwoot
+  processar.
+- Fluxo: `/api/webhook/evolution` resolve o anúncio e grava em
+  `ad_attribution_staging` (por telefone+cliente) → `/api/webhook/chatwoot`,
+  ao criar o lead na primeira mensagem, busca esse staging por telefone numa
+  janela de 30min e anexa os campos em `leads` (`source_id`, `ctwa_clid`,
+  `ad_id`, `ad_name`, `adset_name`, `campaign_name`, `account_name`).
+- Pra cliques vindos do Google (sem `externalAdReply`), não tem parâmetro
+  equivalente — a origem é inferida por uma frase-marcador fixa no texto da
+  primeira mensagem (`"vim pelo site"`, configurada em
+  `src/app/api/webhook/evolution/route.ts`), mesmo padrão que o n8n usava.
+- Token do Meta pra resolver anúncios é **um só, da agência** (não por
+  cliente) — `meta_app_token` (singleton, cifrado), renovado diariamente via
+  Vercel Cron (`vercel.json` → `/api/cron/refresh-meta-token`, protegido por
+  `CRON_SECRET`). Reaproveitado o Client ID/Secret do app Meta que a agência
+  já usava no n8n.
+- **Rollout em piloto**: o webhook novo no Evolution foi registrado só numa
+  instância de teste antes de aplicar nas ~33 reais — checar se já foi
+  expandido pra todas antes de assumir que está ativo em produção pra todo
+  cliente.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`

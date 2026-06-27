@@ -37,6 +37,9 @@ type Lead = {
   stage_id: string | null;
   revenue: number | null;
   utm_source: string | null;
+  campaign_name: string | null;
+  adset_name: string | null;
+  ad_name: string | null;
 };
 type Rule = { id: string; keyword: string; stage_id: string };
 
@@ -89,6 +92,13 @@ function LeadCard({
         <p className="text-sm font-medium">{lead.name ?? "Sem nome"}</p>
         <p className="text-xs font-mono text-muted-foreground">{lead.phone ?? "-"}</p>
         {lead.utm_source && <Badge variant="secondary">{lead.utm_source}</Badge>}
+        {lead.campaign_name && (
+          <div className="text-xs text-muted-foreground space-y-0.5">
+            <p>📣 {lead.campaign_name}</p>
+            {lead.adset_name && <p>🎯 {lead.adset_name}</p>}
+            {lead.ad_name && <p>🖼️ {lead.ad_name}</p>}
+          </div>
+        )}
         <Select
           value={lead.stage_id ?? undefined}
           disabled={pending}

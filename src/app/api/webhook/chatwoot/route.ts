@@ -63,6 +63,25 @@ export async function POST(request: Request) {
     const refCode = extractRefCode(content);
     const visitor = refCode ? await findVisitorById(supabase, settings.client_id, refCode) : null;
 
+    // dados de anuncio resolvidos pelo webhook nativo do Evolution
+    // (messages.upsert), que chega antes deste -- busca por telefone, janela
+    // de 30min (tempo de sobra entre a 1a mensagem chegar no Evolution e o
+    // Chatwoot processar e disparar esse webhook).
+    const phone = (body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? "")
+      .replace(/\D/g, "");
+    const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { data: adData } = phone
+      ? await supabase
+          .from("ad_attribution_staging")
+          .select("source_id, ctwa_clid, ad_id, ad_name, adset_name, campaign_name, account_name")
+          .eq("client_id", settings.client_id)
+          .ilike("phone", `%${phone}%`)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+
     await supabase.from("leads").insert({
       client_id: settings.client_id,
       conversation_external_id: conversationId,
@@ -73,6 +92,13 @@ export async function POST(request: Request) {
       utm_source: visitor?.utm_source ?? null,
       utm_medium: visitor?.utm_medium ?? null,
       utm_campaign: visitor?.utm_campaign ?? null,
+      source_id: adData?.source_id ?? null,
+      ctwa_clid: adData?.ctwa_clid ?? null,
+      ad_id: adData?.ad_id ?? null,
+      ad_name: adData?.ad_name ?? null,
+      adset_name: adData?.adset_name ?? null,
+      campaign_name: adData?.campaign_name ?? null,
+      account_name: adData?.account_name ?? null,
     });
     return NextResponse.json({ lead: "created" });
   }
