@@ -87,6 +87,12 @@ npm run lint
 - Gotcha do Base UI `Select`: `SelectValue` mostra o **valor bruto** quando o
   valor não é a label diretamente — para mostrar o nome da etapa em vez do
   `uuid`, passar uma função em `children`: `<SelectValue>{(id) => label(id)}</SelectValue>`.
+- `src/lib/crm/dispatch-purchase.ts#maybeDispatchPurchaseForLead`: ao mover
+  lead pra etapa **"Vendido"** (nome, case-insensitive — ponytail, ver
+  comentário no arquivo) com `revenue` já preenchido, dispara `Purchase` pro
+  Meta CAPI. Chamado em `moveLeadStage`/`updateLeadRevenue` (manual) e no
+  match de `automation_rules` no webhook do Chatwoot (automático por
+  palavra-chave). Idempotente via `leads.capi_purchase_sent_at`.
 
 ## WhatsApp: Evolution API + Chatwoot (Fase 6)
 

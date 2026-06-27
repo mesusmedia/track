@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rate-limit";
 import { findVisitorById, extractRefCode } from "@/lib/visitors";
 import { resolveAdFromGclid } from "@/lib/google-ads/client";
+import { maybeDispatchPurchaseForLead } from "@/lib/crm/dispatch-purchase";
 
 // ponytail: campos seguem o formato publicamente documentado do webhook
 // "message_created" do Chatwoot -- conferir com um payload real do Chatwoot
@@ -140,6 +141,7 @@ export async function POST(request: Request) {
         .from("leads")
         .update({ stage_id: match.stage_id, updated_at: new Date().toISOString() })
         .eq("id", lead.id);
+      await maybeDispatchPurchaseForLead(lead.id, settings.client_id);
       return NextResponse.json({ lead: "moved", stage_id: match.stage_id });
     }
   }

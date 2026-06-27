@@ -3,6 +3,7 @@
 import { getProfile } from "@/lib/auth/profile";
 import { createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { maybeDispatchPurchaseForLead } from "@/lib/crm/dispatch-purchase";
 
 async function assertAccess(clientId: string) {
   const profile = await getProfile();
@@ -25,6 +26,7 @@ export async function moveLeadStage(leadId: string, stageId: string, clientId: s
     .update({ stage_id: stageId, updated_at: new Date().toISOString() })
     .eq("id", leadId);
   if (error) throw error;
+  await maybeDispatchPurchaseForLead(leadId, clientId);
   revalidateCrmPaths(clientId);
 }
 
@@ -40,6 +42,8 @@ export async function updateLeadRevenue(formData: FormData) {
     .update({ revenue: Number.isFinite(revenue) ? revenue : null, updated_at: new Date().toISOString() })
     .eq("id", leadId);
   if (error) throw error;
+  // valor pode ter sido preenchido depois do lead ja estar em "Vendido"
+  await maybeDispatchPurchaseForLead(leadId, clientId);
   revalidateCrmPaths(clientId);
 }
 
