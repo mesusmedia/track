@@ -1,27 +1,24 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/auth/profile";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { SignOutButton } from "@/components/sign-out-button";
+import { createClient } from "@/lib/supabase/server";
+import { AdminSidebar } from "@/components/admin-sidebar";
+import { AdminHeader } from "@/components/admin-header";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect("/login");
   if (profile.role !== "agency_admin") redirect("/cliente");
 
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+
   return (
-    <div className="flex-1 flex flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Image src="/logo-mesus.png" alt="Mesus Media" width={120} height={40} className="h-7 w-auto" priority />
-          <span className="text-sm text-muted-foreground border-l pl-3">Painel da Agência</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <SignOutButton />
-        </div>
-      </header>
-      <main className="flex-1 p-6">{children}</main>
+    <div className="flex flex-1 min-h-screen">
+      <AdminSidebar email={auth.user?.email ?? null} />
+      <div className="flex-1 flex flex-col min-w-0">
+        <AdminHeader />
+        <main className="flex-1 p-6 overflow-y-auto space-y-6">{children}</main>
+      </div>
     </div>
   );
 }
