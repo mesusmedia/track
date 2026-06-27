@@ -108,30 +108,21 @@ export function IntegrationSettings({
                 onClick={(e) => e.currentTarget.select()}
               />
               <p className="text-xs text-muted-foreground">
-                Cole no {"<head>"} da landing page. Carrega Meta Pixel + GA4 (se configurados),
-                captura fbclid/gclid/UTMs e expõe <code>window.mesusTrack(&quot;Lead&quot;)</code>{" "}
-                pra chamar no clique do botão/form de conversão.
+                Cole no {"<head>"} da landing page — uma única vez, não precisa repetir em cada
+                botão. Carrega Meta Pixel + GA4 (se configurados), captura fbclid/gclid/UTMs,
+                expõe <code>window.mesusTrack(&quot;Lead&quot;)</code> pra chamar no clique do
+                botão/form de conversão, e <strong>reescreve automaticamente todo link de
+                WhatsApp da página</strong> (qualquer <code>wa.me</code>/<code>api.whatsapp.com</code>)
+                pra passar pelo nosso rastreamento antes de abrir o WhatsApp — não precisa editar
+                os botões manualmente.
               </p>
-            </div>
-            <div className="space-y-2 max-w-sm">
-              <Label>Botão de WhatsApp com rastreio de campanha (Google Ads)</Label>
-              <Input
-                readOnly
-                value={`<a id="wa-btn" href="https://${process.env.NEXT_PUBLIC_TRACK_DOMAIN}/api/go/${clientSlug}?utm_campaign=NOME-DA-CAMPANHA&utm_content=NOME-DO-ANUNCIO">Falar no WhatsApp</a>`}
-                className="font-mono text-xs"
-                onClick={(e) => e.currentTarget.select()}
-              />
-              <Input
-                readOnly
-                value={`<script>var g=new URLSearchParams(location.search).get("gclid");if(g)document.getElementById("wa-btn").href+="&gclid="+g;</script>`}
-                className="font-mono text-xs"
-                onClick={(e) => e.currentTarget.select()}
-              />
               <p className="text-xs text-muted-foreground">
-                Use no botão de WhatsApp da landing page (em vez de um link direto pro{" "}
-                <code>wa.me</code>). Troque <code>NOME-DA-CAMPANHA</code>/
-                <code>NOME-DO-ANUNCIO</code> pelo nome real dessa página — o{" "}
-                <code>gclid</code> da URL é capturado automaticamente pelo script.
+                Pra identificar campanha/anúncio por botão (opcional — sem isso, o{" "}
+                <code>gclid</code> automático já funciona), adicione atributos{" "}
+                <code>data-campaign</code>/<code>data-content</code> no link, ex:{" "}
+                <code className="block mt-1">
+                  {`<a href="https://wa.me/SEUNUMERO" data-campaign="Lancamento-Junho" data-content="Video-2">`}
+                </code>
               </p>
             </div>
             <form action={updateTestEventCode} className="space-y-2 max-w-sm">

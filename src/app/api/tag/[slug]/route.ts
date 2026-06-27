@@ -94,6 +94,31 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     }).catch(function () {});
   }
 
+  // reescreve automaticamente todo link de WhatsApp (wa.me ou api.whatsapp.com)
+  // da pagina pra passar pelo /api/go antes de abrir o WhatsApp -- sem isso,
+  // clique direto pro wa.me nao deixa nenhum rastro de gclid/fbclid/UTM.
+  // Campanha/anuncio por link: adicionar data-campaign/data-content no <a>
+  // (opcional) -- sem eles, so o gclid automatico ja vai.
+  function rewriteWhatsappLinks() {
+    var links = document.querySelectorAll('a[href*="wa.me"], a[href*="api.whatsapp.com"]');
+    links.forEach(function (a) {
+      if (a.dataset.mesusRewritten) return;
+      a.dataset.mesusRewritten = "1";
+      var params = new URLSearchParams();
+      if (a.dataset.campaign) params.set("utm_campaign", a.dataset.campaign);
+      if (a.dataset.content) params.set("utm_content", a.dataset.content);
+      if (gclid) params.set("gclid", gclid);
+      if (fbclid) params.set("fbclid", fbclid);
+      var qs = params.toString();
+      a.href = "/api/go/" + CLIENT_SLUG + (qs ? "?" + qs : "");
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", rewriteWhatsappLinks);
+  } else {
+    rewriteWhatsappLinks();
+  }
+
   // window.mesusTrack("Lead", { value: 150, currency: "BRL" }) -- chamar no
   // clique do botao/form de conversao da landing page.
   window.mesusTrack = function (eventName, customData) {
