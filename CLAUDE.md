@@ -169,6 +169,9 @@ npm run lint
   ao criar o lead na primeira mensagem, busca esse staging por telefone numa
   janela de 30min e anexa os campos em `leads` (`source_id`, `ctwa_clid`,
   `ad_id`, `ad_name`, `adset_name`, `campaign_name`, `account_name`).
+- `ad_attribution_staging` só serve de ponte (30min) — `purge_old_ad_attribution_staging`
+  (pg_cron diário) apaga linhas com mais de 2 dias, igual o padrão de retenção
+  do `events_log`.
 - Pra cliques vindos do Google (sem `externalAdReply`), não tem parâmetro
   equivalente — a origem é inferida por uma frase-marcador fixa no texto da
   primeira mensagem (`"vim pelo site"`, configurada em
