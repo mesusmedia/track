@@ -99,31 +99,38 @@ export function IntegrationSettings({
               <Label>Token do webhook de compra</Label>
               <Input readOnly value={settings.webhook_token} className="font-mono text-xs" />
             </div>
-            <div className="space-y-2 max-w-sm">
-              <Label>Snippet de rastreamento (landing page)</Label>
+            <div className="space-y-3 max-w-xl rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
+              <p className="text-sm font-medium">💡 Como instalar na landing page</p>
+              <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal pl-4">
+                <li>
+                  Copie o snippet abaixo e cole dentro do <code>{"<head>"}</code> do HTML da
+                  página — <strong>uma única vez por página</strong>, não precisa repetir.
+                </li>
+                <li>
+                  Pronto. Ele já carrega Meta Pixel + GA4 (se configurados), captura
+                  fbclid/gclid/UTMs da URL, e <strong>encontra e ajusta automaticamente todo
+                  link de WhatsApp da página</strong> (<code>wa.me</code>/<code>api.whatsapp.com</code>)
+                  pra rastrear antes de abrir o WhatsApp — não precisa editar nenhum botão.
+                </li>
+                <li>
+                  Pra eventos de conversão além do clique (ex: envio de formulário), chame{" "}
+                  <code>window.mesusTrack(&quot;Lead&quot;)</code> no evento desejado.
+                </li>
+              </ol>
               <Input
                 readOnly
                 value={`<script src="https://${process.env.NEXT_PUBLIC_TRACK_DOMAIN}/api/tag/${clientSlug}" async></script>`}
-                className="font-mono text-xs"
+                className="font-mono text-xs bg-background"
                 onClick={(e) => e.currentTarget.select()}
               />
               <p className="text-xs text-muted-foreground">
-                Cole no {"<head>"} da landing page — uma única vez, não precisa repetir em cada
-                botão. Carrega Meta Pixel + GA4 (se configurados), captura fbclid/gclid/UTMs,
-                expõe <code>window.mesusTrack(&quot;Lead&quot;)</code> pra chamar no clique do
-                botão/form de conversão, e <strong>reescreve automaticamente todo link de
-                WhatsApp da página</strong> (qualquer <code>wa.me</code>/<code>api.whatsapp.com</code>)
-                pra passar pelo nosso rastreamento antes de abrir o WhatsApp — não precisa editar
-                os botões manualmente.
+                Quer nomear a campanha/anúncio por botão de WhatsApp (opcional — sem isso, o{" "}
+                <code>gclid</code> automático do Google já funciona)? Adicione{" "}
+                <code>data-campaign</code>/<code>data-content</code> no link:
               </p>
-              <p className="text-xs text-muted-foreground">
-                Pra identificar campanha/anúncio por botão (opcional — sem isso, o{" "}
-                <code>gclid</code> automático já funciona), adicione atributos{" "}
-                <code>data-campaign</code>/<code>data-content</code> no link, ex:{" "}
-                <code className="block mt-1">
-                  {`<a href="https://wa.me/SEUNUMERO" data-campaign="Lancamento-Junho" data-content="Video-2">`}
-                </code>
-              </p>
+              <code className="block text-xs bg-background rounded px-2 py-1.5 border">
+                {`<a href="https://wa.me/SEUNUMERO" data-campaign="Lancamento-Junho" data-content="Video-2">`}
+              </code>
             </div>
             <form action={updateTestEventCode} className="space-y-2 max-w-sm">
               <input type="hidden" name="client_id" value={clientId} />
