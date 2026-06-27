@@ -134,4 +134,11 @@ npm run lint
 - [ ] Fase 7 — Dashboards finais
 - [ ] Fase 8 — Auditoria de segurança + publicação
 
+## Deploy (Vercel)
+
+- O autor do commit precisa bater com um e-mail verificado na conta GitHub
+  conectada ao projeto (`luhsdm`) — senão o Vercel bloqueia o deploy em
+  produção mesmo com push normal ("Deployment Blocked: commit author did not
+  have contributing access"). Git local configurado com `luh.sdm@gmail.com`.
+
 @AGENTS.md
