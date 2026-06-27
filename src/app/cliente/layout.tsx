@@ -14,22 +14,7 @@ export default async function ClienteLayout({ children }: { children: React.Reac
     <div className="flex-1 flex flex-col">
       <header className="flex items-center justify-between border-b px-6 py-4">
         <div className="flex items-center gap-6">
-          <Image
-            src="/logo-mesus-dark.png"
-            alt="Mesus Media"
-            width={120}
-            height={40}
-            className="h-7 w-auto hidden dark:block"
-            priority
-          />
-          <Image
-            src="/logo-mesus-light.png"
-            alt="Mesus Media"
-            width={120}
-            height={40}
-            className="h-7 w-auto dark:hidden"
-            priority
-          />
+          <Image src="/logo-mesus.png" alt="Mesus Media" width={120} height={40} className="h-7 w-auto" priority />
           <nav className="flex gap-4 text-sm text-muted-foreground">
             <Link href="/cliente" className="hover:text-foreground">
               Visão geral
