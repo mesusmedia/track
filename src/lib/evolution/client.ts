@@ -83,6 +83,20 @@ export async function findInstanceByName(instanceName: string) {
   };
 }
 
+// registra o webhook nativo messages.upsert (Fase 6c, atribuicao de anuncio)
+// numa instancia -- apikey global funciona pra qualquer instancia, igual
+// createInstance/findInstanceByName.
+export async function setMessageWebhook(instanceName: string, webhookUrl: string) {
+  const res = await fetch(`${BASE_URL}/webhook/set/${instanceName}`, {
+    method: "POST",
+    headers: globalHeaders(),
+    body: JSON.stringify({
+      webhook: { enabled: true, url: webhookUrl, events: ["MESSAGES_UPSERT"] },
+    }),
+  });
+  if (!res.ok) throw new Error(`Falha ao registrar webhook em ${instanceName}`);
+}
+
 export async function deleteInstance(instanceName: string) {
   await fetch(`${BASE_URL}/instance/delete/${instanceName}`, {
     method: "DELETE",
