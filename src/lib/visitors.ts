@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 
-const VISITOR_FIELDS = "trck_user_id, fbp, fbc, utm_source, utm_medium, utm_campaign";
+const VISITOR_FIELDS = "trck_user_id, fbp, fbc, ctwa_clid, utm_source, utm_medium, utm_campaign";
 
 export async function findVisitorById(
   supabase: ReturnType<typeof createServiceClient>,

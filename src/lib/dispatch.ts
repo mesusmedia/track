@@ -71,6 +71,7 @@ export async function dispatchEvent(params: {
           externalId: null,
           fbp: params.visitor?.fbp,
           fbc: params.visitor?.fbc,
+          ctwaClid: params.visitor?.ctwa_clid,
           clientIp: params.ip,
           clientUserAgent: params.userAgent,
         },

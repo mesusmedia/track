@@ -6,6 +6,7 @@ type MetaUserData = {
   externalId?: string | null;
   fbp?: string | null;
   fbc?: string | null;
+  ctwaClid?: string | null;
   clientIp?: string | null;
   clientUserAgent?: string | null;
 };
@@ -31,6 +32,7 @@ export async function sendMetaCapiEvent(params: MetaEventParams) {
   // fbp/fbc/ip/user_agent NUNCA sao hasheados (exigencia da Meta)
   if (params.userData.fbp) userData.fbp = params.userData.fbp;
   if (params.userData.fbc) userData.fbc = params.userData.fbc;
+  if (params.userData.ctwaClid) userData.ctwa_clid = params.userData.ctwaClid;
   if (params.userData.clientIp) userData.client_ip_address = params.userData.clientIp;
   if (params.userData.clientUserAgent) userData.client_user_agent = params.userData.clientUserAgent;
 
@@ -41,6 +43,11 @@ export async function sendMetaCapiEvent(params: MetaEventParams) {
         event_time: params.eventTime,
         event_id: params.eventId,
         action_source: params.actionSource,
+        // exigido pra Meta atribuir o clique-pra-WhatsApp ao
+        // anuncio/conjunto/campanha certo dentro do Ads Manager -- sem isso
+        // (+ ctwa_clid em user_data) o evento e aceito mas fica "orfao",
+        // sem credito pra nenhuma campanha.
+        ...(params.actionSource === "business_messaging" ? { messaging_channel: "whatsapp" } : {}),
         event_source_url: params.eventSourceUrl ?? undefined,
         user_data: userData,
         custom_data: params.customData,
