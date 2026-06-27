@@ -1,7 +1,11 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { NewClientDialog } from "./clients/new-client-dialog";
+import { Settings } from "lucide-react";
 
 export default async function AdminHomePage() {
   const supabase = await createClient();
@@ -12,9 +16,12 @@ export default async function AdminHomePage() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Clientes</CardTitle>
-        <CardDescription>Todos os clientes da agência</CardDescription>
+      <CardHeader className="flex items-center justify-between">
+        <div>
+          <CardTitle>Clientes</CardTitle>
+          <CardDescription>Todos os clientes da agência</CardDescription>
+        </div>
+        <NewClientDialog />
       </CardHeader>
       <CardContent>
         {!clients || clients.length === 0 ? (
@@ -26,6 +33,7 @@ export default async function AdminHomePage() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Criado em</TableHead>
                 <TableHead className="text-right">Status</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -37,6 +45,16 @@ export default async function AdminHomePage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Badge variant="secondary">Ativo</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      nativeButton={false}
+                      render={<Link href={`/admin/clients/${c.id}/configuracoes`} />}
+                    >
+                      <Settings className="size-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

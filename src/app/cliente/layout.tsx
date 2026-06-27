@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/auth/profile";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -11,7 +12,17 @@ export default async function ClienteLayout({ children }: { children: React.Reac
   return (
     <div className="flex-1 flex flex-col">
       <header className="flex items-center justify-between border-b px-6 py-4">
-        <span className="font-semibold tracking-tight">Painel do Cliente</span>
+        <div className="flex items-center gap-6">
+          <span className="font-semibold tracking-tight">Painel do Cliente</span>
+          <nav className="flex gap-4 text-sm text-muted-foreground">
+            <Link href="/cliente" className="hover:text-foreground">
+              Visão geral
+            </Link>
+            <Link href="/cliente/configuracoes" className="hover:text-foreground">
+              Configurações
+            </Link>
+          </nav>
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <SignOutButton />
