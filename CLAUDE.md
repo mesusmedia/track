@@ -183,6 +183,38 @@ npm run lint
   expandido pra todas antes de assumir que está ativo em produção pra todo
   cliente.
 
+## Atribuição de anúncio — Google Ads (gclid → campanha/grupo/anúncio)
+
+- Mesmo padrão do Meta: token único da agência (não por cliente), via conta
+  MCC própria (`Mesus Media MCC`, customer id `671-020-3262`), não as
+  credenciais antigas por-cliente que `google_ads_accounts` foi desenhada
+  pra guardar originalmente (essas colunas continuam existindo na tabela,
+  mas não são usadas pelo fluxo agência-wide — só `customer_id` é lido de lá).
+- `src/lib/google-ads/client.ts#resolveAdFromGclid`: consulta o recurso
+  `click_view` (Google Ads API, GAQL) filtrando por `click_view.gclid` —
+  **só funciona para cliques dos últimos 90 dias**, limitação da própria API,
+  não nossa.
+- Credenciais: `GOOGLE_ADS_OAUTH_CLIENT_ID/SECRET` (Google Cloud Console),
+  `GOOGLE_ADS_REFRESH_TOKEN` (gerado uma vez via OAuth Playground),
+  `GOOGLE_ADS_DEVELOPER_TOKEN` + `GOOGLE_ADS_MCC_CUSTOMER_ID` (Google Ads API
+  Center, sob a conta MCC).
+- **Developer Token em "Conta de teste" até a Google aprovar "Acesso
+  Básico"** (solicitado, revisão em até 3 dias úteis) — até aprovar, toda
+  chamada contra conta real retorna `DEVELOPER_TOKEN_NOT_APPROVED`. O código
+  falha graciosamente (retorna `null`, não quebra a criação do lead).
+- Versão da API: usar a constante `API_VERSION` em `client.ts` — `v20` e
+  anteriores já estão deprecados (bloqueados pelo Google), confirmar a mais
+  recente antes de atualizar.
+- Fluxo: `/api/go/[slug]` já captura `gclid` (Fase 2) → fica em
+  `visitors.gclid` → no `/api/webhook/chatwoot`, se não tiver dado de anúncio
+  do Meta (ad_attribution_staging) mas o visitante tiver `gclid`, resolve via
+  `resolveAdFromGclid` usando `google_ads_accounts.customer_id` do cliente.
+- Pra clientes sem app/script (anúncio clássico com link configurável): tem
+  um snippet de botão WhatsApp com UTM manual em
+  `src/components/integration-settings.tsx` — funciona hoje, sem depender da
+  aprovação da API; o `gclid` automático + nome de campanha pela API é o
+  upgrade incremental, não bloqueia nada.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`

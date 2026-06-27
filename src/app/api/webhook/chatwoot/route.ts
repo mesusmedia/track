@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rate-limit";
 import { findVisitorById, extractRefCode } from "@/lib/visitors";
+import { resolveAdFromGclid } from "@/lib/google-ads/client";
 
 // ponytail: campos seguem o formato publicamente documentado do webhook
 // "message_created" do Chatwoot -- conferir com um payload real do Chatwoot
@@ -82,6 +83,26 @@ export async function POST(request: Request) {
           .maybeSingle()
       : { data: null };
 
+    // sem dado de anuncio do Meta (staging) mas com gclid -- tenta resolver
+    // via Google Ads API (click_view). Token de agencia, conta do cliente
+    // precisa estar cadastrada em google_ads_accounts.customer_id. Falha
+    // graciosamente (ex: Acesso Basico ainda nao aprovado pelo Google).
+    let googleAdData: Awaited<ReturnType<typeof resolveAdFromGclid>> = null;
+    if (!adData?.campaign_name && visitor?.gclid) {
+      const { data: googleAccount } = await supabase
+        .from("google_ads_accounts")
+        .select("customer_id")
+        .eq("client_id", settings.client_id)
+        .eq("active", true)
+        .limit(1)
+        .maybeSingle();
+      if (googleAccount) {
+        googleAdData = await resolveAdFromGclid(googleAccount.customer_id, visitor.gclid).catch(
+          () => null,
+        );
+      }
+    }
+
     await supabase.from("leads").insert({
       client_id: settings.client_id,
       conversation_external_id: conversationId,
@@ -94,10 +115,10 @@ export async function POST(request: Request) {
       utm_campaign: visitor?.utm_campaign ?? null,
       source_id: adData?.source_id ?? null,
       ctwa_clid: adData?.ctwa_clid ?? null,
-      ad_id: adData?.ad_id ?? null,
+      ad_id: adData?.ad_id ?? googleAdData?.adId ?? null,
       ad_name: adData?.ad_name ?? null,
-      adset_name: adData?.adset_name ?? null,
-      campaign_name: adData?.campaign_name ?? null,
+      adset_name: adData?.adset_name ?? googleAdData?.adGroupName ?? null,
+      campaign_name: adData?.campaign_name ?? googleAdData?.campaignName ?? null,
       account_name: adData?.account_name ?? null,
     });
     return NextResponse.json({ lead: "created" });
