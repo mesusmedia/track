@@ -32,7 +32,10 @@ Plano completo de fases: `C:\Users\oluca\.claude\plans\cl-udio-eu-vou-te-spicy-c
 - Segredos de integração (tokens GA4/Meta/Google Ads/Evolution) ficam em
   tabelas no Postgres, cifrados com AES-256-GCM em código de servidor
   (`src/lib/crypto.ts`, chave em `SECRETS_ENCRYPTION_KEY`) — nunca em texto
-  puro nem em colunas legíveis pelo client.
+  puro nem em colunas legíveis pelo client. Ao escrever um Buffer cifrado numa
+  coluna `bytea` via supabase-js, sempre converter com `bufferToBytea()`
+  primeiro — passar o Buffer direto serializa como
+  `{"type":"Buffer","data":[...]}` no JSON (bug já visto, corrigido na Fase 3).
 - Campanhas reais são de clique-pra-WhatsApp (não venda em site). GA4/Pixel
   são opcionais por cliente (só fazem sentido pra quem tem landing page).
   Clique direto pro WhatsApp é rastreado via `ctwa_clid` (Meta, capturado no
@@ -62,7 +65,7 @@ npm run lint
 - [x] Fase 0 — Setup do projeto, design system, Supabase clients, CLAUDE.md
 - [x] Fase 1 — Auth + multi-tenant + painéis base
 - [x] Fase 2 — Modelo de dados de tracking + captura
-- [ ] Fase 3 — Integração Meta CAPI + GA4
+- [x] Fase 3 — Integração Meta CAPI + GA4
 - [ ] Fase 4 — Webhook de compra + vinculação
 - [ ] Fase 5 — CRM kanban + automação por palavra-chave
 - [ ] Fase 6 — WhatsApp (Evolution API) + Chatwoot

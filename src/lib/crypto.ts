@@ -36,3 +36,10 @@ export function maskSecret(plaintext: string): string {
 export function byteaToBuffer(value: string): Buffer {
   return Buffer.from(value.startsWith("\\x") ? value.slice(2) : value, "hex");
 }
+
+// e exige a mesma notacao "\x<hex>" na escrita -- um Buffer enviado direto
+// via supabase-js vira {"type":"Buffer","data":[...]} no JSON (toJSON nativo
+// do Node), nao os bytes crus.
+export function bufferToBytea(value: Buffer): string {
+  return `\\x${value.toString("hex")}`;
+}

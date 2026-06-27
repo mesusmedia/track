@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rate-limit";
+import { hashPii, hashPhone } from "@/lib/hash";
 
 export async function POST(request: Request) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -43,6 +44,9 @@ export async function POST(request: Request) {
   for (const field of fields) {
     if (typeof body[field] === "string") visitorData[field] = body[field];
   }
+  // email/telefone nunca sao guardados em texto puro -- so o hash chega ao banco.
+  if (typeof body.email === "string" && body.email) visitorData.email_hash = hashPii(body.email);
+  if (typeof body.phone === "string" && body.phone) visitorData.phone_hash = hashPhone(body.phone);
 
   if (typeof body.trck_user_id === "string") {
     const { error } = await supabase

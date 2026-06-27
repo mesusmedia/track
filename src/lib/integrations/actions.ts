@@ -2,7 +2,7 @@
 
 import { getProfile } from "@/lib/auth/profile";
 import { createServiceClient } from "@/lib/supabase/server";
-import { encryptSecret } from "@/lib/crypto";
+import { encryptSecret, bufferToBytea } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 
 const TABLES = {
@@ -37,7 +37,7 @@ export async function addIntegrationAccount(type: IntegrationType, formData: For
     client_id: clientId,
     label,
     [idField]: idValue,
-    [secretField]: encryptSecret(secret),
+    [secretField]: bufferToBytea(encryptSecret(secret)),
   });
   if (error) throw error;
 
@@ -75,8 +75,8 @@ export async function addGoogleAdsAccount(formData: FormData) {
     label,
     customer_id: customerId,
     login_customer_id: loginCustomerId,
-    refresh_token_enc: encryptSecret(refreshToken),
-    developer_token_enc: encryptSecret(developerToken),
+    refresh_token_enc: bufferToBytea(encryptSecret(refreshToken)),
+    developer_token_enc: bufferToBytea(encryptSecret(developerToken)),
   });
   if (error) throw error;
   revalidateConfigPaths(clientId);
