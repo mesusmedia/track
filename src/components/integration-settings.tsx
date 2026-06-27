@@ -21,6 +21,7 @@ import {
   removeIntegrationAccount,
   removeGoogleAdsAccount,
   updateWhatsappNumber,
+  updateTestEventCode,
 } from "@/lib/integrations/actions";
 import {
   testGa4Connection,
@@ -34,6 +35,7 @@ type Account = { id: string; label: string; masked: string; idValue: string };
 
 export function IntegrationSettings({
   clientId,
+  clientSlug,
   settings,
   ga4,
   metaPixels,
@@ -41,11 +43,13 @@ export function IntegrationSettings({
   googleAds,
 }: {
   clientId: string;
+  clientSlug: string;
   settings: {
     webhook_token: string;
     whatsapp_number: string | null;
     evolution_instance_apikey_enc: string | null;
     chatwoot_inbox_id: string | null;
+    test_event_code: string | null;
   };
   ga4: Account[];
   metaPixels: Account[];
@@ -95,6 +99,34 @@ export function IntegrationSettings({
               <Label>Token do webhook de compra</Label>
               <Input readOnly value={settings.webhook_token} className="font-mono text-xs" />
             </div>
+            <div className="space-y-2 max-w-sm">
+              <Label>Snippet de rastreamento (landing page)</Label>
+              <Input
+                readOnly
+                value={`<script src="https://track.mesusmedia.com.br/api/tag/${clientSlug}" async></script>`}
+                className="font-mono text-xs"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <p className="text-xs text-muted-foreground">
+                Cole no {"<head>"} da landing page. Carrega Meta Pixel + GA4 (se configurados),
+                captura fbclid/gclid/UTMs e expõe <code>window.mesusTrack(&quot;Lead&quot;)</code>{" "}
+                pra chamar no clique do botão/form de conversão.
+              </p>
+            </div>
+            <form action={updateTestEventCode} className="space-y-2 max-w-sm">
+              <input type="hidden" name="client_id" value={clientId} />
+              <Label htmlFor="test_event_code">Test Event Code (Meta Events Manager)</Label>
+              <Input
+                id="test_event_code"
+                name="test_event_code"
+                defaultValue={settings.test_event_code ?? ""}
+                placeholder="TEST12345"
+                className="font-mono text-xs"
+              />
+              <Button type="submit" size="sm">
+                Salvar
+              </Button>
+            </form>
           </TabsContent>
           <TabsContent value="ga4" className="space-y-3 pt-4">
             <AccountList

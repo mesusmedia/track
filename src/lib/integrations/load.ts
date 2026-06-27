@@ -25,7 +25,9 @@ export async function loadIntegrationAccounts(clientId: string) {
       .eq("client_id", clientId),
     supabase
       .from("settings")
-      .select("webhook_token, whatsapp_number, evolution_instance_apikey_enc, chatwoot_inbox_id")
+      .select(
+        "webhook_token, whatsapp_number, evolution_instance_apikey_enc, chatwoot_inbox_id, test_event_code",
+      )
       .eq("client_id", clientId)
       .single(),
   ]);
@@ -36,6 +38,7 @@ export async function loadIntegrationAccounts(clientId: string) {
       whatsapp_number: "",
       evolution_instance_apikey_enc: null,
       chatwoot_inbox_id: null,
+      test_event_code: null,
     },
     ga4: (ga4.data ?? []).map(
       (a): Account => ({

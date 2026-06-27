@@ -12,7 +12,7 @@ export default async function AdminClientConfigPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: client } = await supabase.from("clients").select("id, name").eq("id", id).single();
+  const { data: client } = await supabase.from("clients").select("id, name, slug").eq("id", id).single();
   if (!client) notFound();
 
   const accounts = await loadIntegrationAccounts(id);
@@ -23,7 +23,7 @@ export default async function AdminClientConfigPage({
         <ArrowLeft className="size-4" /> Voltar
       </Link>
       <h1 className="text-lg font-semibold">{client.name} — Configurações</h1>
-      <IntegrationSettings clientId={id} {...accounts} />
+      <IntegrationSettings clientId={id} clientSlug={client.slug} {...accounts} />
     </div>
   );
 }

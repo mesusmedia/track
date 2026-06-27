@@ -104,6 +104,20 @@ export async function updateWhatsappNumber(formData: FormData) {
   revalidateConfigPaths(clientId);
 }
 
+export async function updateTestEventCode(formData: FormData) {
+  const clientId = String(formData.get("client_id"));
+  await assertAccess(clientId);
+
+  const testEventCode = String(formData.get("test_event_code") ?? "").trim() || null;
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({ test_event_code: testEventCode, updated_at: new Date().toISOString() })
+    .eq("client_id", clientId);
+  if (error) throw error;
+  revalidateConfigPaths(clientId);
+}
+
 function revalidateConfigPaths(clientId: string) {
   revalidatePath(`/admin/clients/${clientId}/configuracoes`);
   revalidatePath("/cliente/configuracoes");

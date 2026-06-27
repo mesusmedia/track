@@ -49,11 +49,14 @@ export async function POST(request: Request) {
   if (typeof body.phone === "string" && body.phone) visitorData.phone_hash = hashPhone(body.phone);
 
   if (typeof body.trck_user_id === "string") {
+    // upsert, nao update: o id pode ter sido gerado no navegador (snippet de
+    // tracking) antes de existir qualquer linha em visitors.
     const { error } = await supabase
       .from("visitors")
-      .update({ ...visitorData, updated_at: new Date().toISOString() })
-      .eq("trck_user_id", body.trck_user_id)
-      .eq("client_id", client.id);
+      .upsert(
+        { ...visitorData, trck_user_id: body.trck_user_id, updated_at: new Date().toISOString() },
+        { onConflict: "trck_user_id" },
+      );
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ trck_user_id: body.trck_user_id });
   }
