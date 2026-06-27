@@ -52,6 +52,23 @@ npm run build    # build de produção (rodar ao fim de cada fase)
 npm run lint
 ```
 
+## Webhook de compra (Fase 4)
+
+- `/api/webhook/compra?token=...&platform=hotmart|kiwify|eduzz|generic` —
+  identifica o cliente pelo `webhook_token` (único, ver `settings`).
+  Normalização por plataforma em `src/lib/webhooks/normalize.ts` —
+  **os campos de Hotmart/Kiwify/Eduzz seguem o formato publicamente
+  documentado (a doc oficial estava bloqueada por CloudFront ao implementar).
+  Confirmar com um payload real de cada plataforma antes de ligar em
+  produção.**
+- Vinculação: `trck_user_id` completo ou só os 8 chars do ref code do
+  `/api/go` (faixa de UUID por prefixo, já que a coluna é `uuid` e não aceita
+  `ilike`) → fallback por hash de e-mail → hash de telefone.
+- Idempotência: reenvio do mesmo `transaction_id` com status já `paid` não
+  redispara pra Meta/GA4.
+- Dispatch de evento (Meta CAPI + GA4) extraído pra `src/lib/dispatch.ts`,
+  compartilhado entre `/api/event` e o webhook de compra.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`
@@ -66,7 +83,7 @@ npm run lint
 - [x] Fase 1 — Auth + multi-tenant + painéis base
 - [x] Fase 2 — Modelo de dados de tracking + captura
 - [x] Fase 3 — Integração Meta CAPI + GA4
-- [ ] Fase 4 — Webhook de compra + vinculação
+- [x] Fase 4 — Webhook de compra + vinculação
 - [ ] Fase 5 — CRM kanban + automação por palavra-chave
 - [ ] Fase 6 — WhatsApp (Evolution API) + Chatwoot
 - [ ] Fase 7 — Dashboards finais
