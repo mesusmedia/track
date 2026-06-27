@@ -42,6 +42,10 @@ export async function POST(request: Request) {
         utm_medium: body.utm_medium ?? null,
         utm_campaign: body.utm_campaign ?? null,
         ip,
+        // ponytail: geo via header da Vercel (gratis, zero dependencia) --
+        // só populado em produção; em dev local fica null.
+        geo_country: request.headers.get("x-vercel-ip-country"),
+        geo_city: request.headers.get("x-vercel-ip-city"),
       },
       { onConflict: "client_id,event_id", ignoreDuplicates: true },
     )

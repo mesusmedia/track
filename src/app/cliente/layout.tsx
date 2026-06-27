@@ -21,6 +21,15 @@ export default async function ClienteLayout({ children }: { children: React.Reac
             <Link href="/cliente/crm" className="hover:text-foreground">
               CRM
             </Link>
+            <Link href="/cliente/eventos" className="hover:text-foreground">
+              Eventos
+            </Link>
+            <Link href="/cliente/faturamento" className="hover:text-foreground">
+              Faturamento
+            </Link>
+            <Link href="/cliente/campanhas" className="hover:text-foreground">
+              Campanhas
+            </Link>
             <Link href="/cliente/configuracoes" className="hover:text-foreground">
               Configurações
             </Link>

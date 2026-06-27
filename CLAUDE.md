@@ -114,6 +114,24 @@ npm run lint
   servidor Evolution vai no header `apikey`; do Chatwoot vai no header
   `api-access-token` (com hífen, não underscore).
 
+## Dashboards finais (Fase 7)
+
+- `src/lib/dashboard/load.ts`: `loadOverview`/`loadEvents`/`loadBilling`/`loadCampaigns`
+  (queries diretas, sem agregação no banco — ok pro volume atual; revisar com
+  `count`/views materializadas se a base crescer muito).
+- Geo: **sem lib de mapa** (`react-simple-maps` não suporta React 19, e
+  construir um mapa SVG próprio seria over-engineering pro que a agência
+  precisa). Em vez disso, tabela "país/cidade" simples, alimentada pelos
+  headers gratuitos da Vercel (`x-vercel-ip-country`/`x-vercel-ip-city`,
+  populados em `/api/event`) — só funciona em produção (Vercel), fica vazio
+  em dev local.
+- Campanhas: receita por `utm_campaign` a partir de `purchases` (dado real).
+  **ROAS/CPA cruzando gasto do Meta Ads não foi implementado** — exigiria
+  capturar o `campaign_id` real do clique (não só o nome da UTM, que pode
+  divergir do nome da campanha no Meta) para casar com o Ads Insights API.
+  Ver `hasMetaAdsConfigured` em `loadCampaigns` — sinaliza quando o cliente
+  tem conta Meta Ads cadastrada, mas a página ainda não cruza com gasto.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`
@@ -131,7 +149,7 @@ npm run lint
 - [x] Fase 4 — Webhook de compra + vinculação
 - [x] Fase 5 — CRM kanban + automação por palavra-chave
 - [x] Fase 6 — WhatsApp (Evolution API) + Chatwoot
-- [ ] Fase 7 — Dashboards finais
+- [x] Fase 7 — Dashboards finais
 - [ ] Fase 8 — Auditoria de segurança + publicação
 
 ## Deploy (Vercel)
