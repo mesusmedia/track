@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/auth/profile";
@@ -13,7 +14,22 @@ export default async function ClienteLayout({ children }: { children: React.Reac
     <div className="flex-1 flex flex-col">
       <header className="flex items-center justify-between border-b px-6 py-4">
         <div className="flex items-center gap-6">
-          <span className="font-semibold tracking-tight">Painel do Cliente</span>
+          <Image
+            src="/logo-mesus-dark.png"
+            alt="Mesus Media"
+            width={120}
+            height={40}
+            className="h-7 w-auto hidden dark:block"
+            priority
+          />
+          <Image
+            src="/logo-mesus-light.png"
+            alt="Mesus Media"
+            width={120}
+            height={40}
+            className="h-7 w-auto dark:hidden"
+            priority
+          />
           <nav className="flex gap-4 text-sm text-muted-foreground">
             <Link href="/cliente" className="hover:text-foreground">
               Visão geral
