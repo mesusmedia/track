@@ -113,6 +113,27 @@ export function IntegrationSettings({
                 pra chamar no clique do botão/form de conversão.
               </p>
             </div>
+            <div className="space-y-2 max-w-sm">
+              <Label>Botão de WhatsApp com rastreio de campanha (Google Ads)</Label>
+              <Input
+                readOnly
+                value={`<a id="wa-btn" href="https://${process.env.NEXT_PUBLIC_TRACK_DOMAIN}/api/go/${clientSlug}?utm_campaign=NOME-DA-CAMPANHA&utm_content=NOME-DO-ANUNCIO">Falar no WhatsApp</a>`}
+                className="font-mono text-xs"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <Input
+                readOnly
+                value={`<script>var g=new URLSearchParams(location.search).get("gclid");if(g)document.getElementById("wa-btn").href+="&gclid="+g;</script>`}
+                className="font-mono text-xs"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <p className="text-xs text-muted-foreground">
+                Use no botão de WhatsApp da landing page (em vez de um link direto pro{" "}
+                <code>wa.me</code>). Troque <code>NOME-DA-CAMPANHA</code>/
+                <code>NOME-DO-ANUNCIO</code> pelo nome real dessa página — o{" "}
+                <code>gclid</code> da URL é capturado automaticamente pelo script.
+              </p>
+            </div>
             <form action={updateTestEventCode} className="space-y-2 max-w-sm">
               <input type="hidden" name="client_id" value={clientId} />
               <Label htmlFor="test_event_code">Test Event Code (Meta Events Manager)</Label>
