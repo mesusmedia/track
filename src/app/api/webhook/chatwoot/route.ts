@@ -14,19 +14,28 @@ export async function POST(request: Request) {
 
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
-  if (!token) return NextResponse.json({ error: "token é obrigatório" }, { status: 401 });
+  if (token !== process.env.CHATWOOT_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "token inválido" }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || body.event !== "message_created") {
+    return NextResponse.json({ ignored: true });
+  }
+
+  // todos os clientes compartilham a mesma conta Chatwoot (varias inboxes) --
+  // um unico webhook de conta cobre todo mundo; o inbox.id resolve o cliente.
+  const inboxId = String(body.inbox?.id ?? "");
+  if (!inboxId) return NextResponse.json({ error: "inbox.id ausente" }, { status: 400 });
 
   const supabase = createServiceClient();
   const { data: settings } = await supabase
     .from("settings")
     .select("client_id")
-    .eq("webhook_token", token)
+    .eq("chatwoot_inbox_id", inboxId)
     .maybeSingle();
-  if (!settings) return NextResponse.json({ error: "token inválido" }, { status: 401 });
-
-  const body = await request.json().catch(() => null);
-  if (!body || body.event !== "message_created") {
-    return NextResponse.json({ ignored: true });
+  if (!settings) {
+    return NextResponse.json({ error: "inbox não vinculada a nenhum cliente" }, { status: 404 });
   }
 
   const conversationId = String(body.conversation?.id ?? "");

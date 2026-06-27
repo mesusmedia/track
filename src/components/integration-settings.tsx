@@ -28,6 +28,7 @@ import {
   testMetaAdAccountConnection,
   testGoogleAdsConnection,
 } from "@/lib/integrations/test-connection";
+import { WhatsappConnect } from "@/components/whatsapp-connect";
 
 type Account = { id: string; label: string; masked: string; idValue: string };
 
@@ -40,7 +41,12 @@ export function IntegrationSettings({
   googleAds,
 }: {
   clientId: string;
-  settings: { webhook_token: string; whatsapp_number: string | null };
+  settings: {
+    webhook_token: string;
+    whatsapp_number: string | null;
+    evolution_instance_apikey_enc: string | null;
+    chatwoot_inbox_id: string | null;
+  };
   ga4: Account[];
   metaPixels: Account[];
   metaAds: Account[];
@@ -56,11 +62,19 @@ export function IntegrationSettings({
         <Tabs defaultValue="geral">
           <TabsList>
             <TabsTrigger value="geral">Geral</TabsTrigger>
+            <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
             <TabsTrigger value="ga4">GA4</TabsTrigger>
             <TabsTrigger value="meta_pixel">Meta Pixel</TabsTrigger>
             <TabsTrigger value="meta_ads">Meta Ads</TabsTrigger>
             <TabsTrigger value="google_ads">Google Ads</TabsTrigger>
           </TabsList>
+          <TabsContent value="whatsapp" className="pt-4">
+            <WhatsappConnect
+              clientId={clientId}
+              hasInstance={!!settings.evolution_instance_apikey_enc}
+              chatwootInboxId={settings.chatwoot_inbox_id}
+            />
+          </TabsContent>
           <TabsContent value="geral" className="space-y-4 pt-4">
             <form action={updateWhatsappNumber} className="space-y-4 max-w-sm">
               <input type="hidden" name="client_id" value={clientId} />

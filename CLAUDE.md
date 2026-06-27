@@ -88,6 +88,32 @@ npm run lint
   valor não é a label diretamente — para mostrar o nome da etapa em vez do
   `uuid`, passar uma função em `children`: `<SelectValue>{(id) => label(id)}</SelectValue>`.
 
+## WhatsApp: Evolution API + Chatwoot (Fase 6)
+
+- Infra agência-wide (1 servidor Evolution + 1 conta Chatwoot pra todos os
+  clientes, várias inboxes): `EVOLUTION_BASE_URL`, `EVOLUTION_GLOBAL_API_KEY`,
+  `CHATWOOT_BASE_URL`, `CHATWOOT_ACCOUNT_ID`, `CHATWOOT_API_ACCESS_TOKEN`,
+  `CHATWOOT_WEBHOOK_SECRET` — todas em env (infra compartilhada, não por
+  cliente, diferente das contas de integração que ficam no banco).
+- Fluxo de conexão (`src/lib/whatsapp/actions.ts`): `connectWhatsapp` ->
+  `POST /instance/create` (apikey global) retorna `hash.apikey` (chave da
+  própria instância, cifrada e salva em `settings.evolution_instance_apikey_enc`)
+  + QR code (`qrcode.base64`) já na criação -> `POST /chatwoot/set/{instance}`
+  (apikey da instância) liga a integração nativa Evolution↔Chatwoot.
+  **A inbox só é criada no Chatwoot depois que o WhatsApp conectar de verdade**
+  (scan do QR) — por isso `syncChatwootInbox` (busca a inbox por nome e salva
+  `settings.chatwoot_inbox_id`) só funciona depois disso, com erro claro se
+  chamado antes.
+- Webhook: como **todos os clientes compartilham a mesma conta Chatwoot**
+  (várias inboxes, não uma conta por cliente), o webhook é **um só pra conta
+  inteira** (registrado uma vez via API do Chatwoot, não por cliente) — em vez
+  do padrão "um `webhook_token` por cliente" usado no webhook de compra.
+  `/api/webhook/chatwoot` autentica por `CHATWOOT_WEBHOOK_SECRET` (compartilhado)
+  e resolve o cliente por `settings.chatwoot_inbox_id = body.inbox.id`.
+- Confirmado contra o servidor real da agência (não é só doc): `apikey` do
+  servidor Evolution vai no header `apikey`; do Chatwoot vai no header
+  `api-access-token` (com hífen, não underscore).
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`
@@ -104,7 +130,7 @@ npm run lint
 - [x] Fase 3 — Integração Meta CAPI + GA4
 - [x] Fase 4 — Webhook de compra + vinculação
 - [x] Fase 5 — CRM kanban + automação por palavra-chave
-- [ ] Fase 6 — WhatsApp (Evolution API) + Chatwoot
+- [x] Fase 6 — WhatsApp (Evolution API) + Chatwoot
 - [ ] Fase 7 — Dashboards finais
 - [ ] Fase 8 — Auditoria de segurança + publicação
 
