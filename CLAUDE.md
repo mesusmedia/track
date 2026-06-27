@@ -53,7 +53,7 @@ npm run lint
 ## Estado das fases
 
 - [x] Fase 0 — Setup do projeto, design system, Supabase clients, CLAUDE.md
-- [ ] Fase 1 — Auth + multi-tenant + painéis base
+- [x] Fase 1 — Auth + multi-tenant + painéis base
 - [ ] Fase 2 — Modelo de dados de tracking + captura
 - [ ] Fase 3 — Integração Meta CAPI + GA4
 - [ ] Fase 4 — Webhook de compra + vinculação
