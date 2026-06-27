@@ -103,7 +103,7 @@ export function IntegrationSettings({
               <Label>Snippet de rastreamento (landing page)</Label>
               <Input
                 readOnly
-                value={`<script src="https://track.mesusmedia.com.br/api/tag/${clientSlug}" async></script>`}
+                value={`<script src="https://${process.env.NEXT_PUBLIC_TRACK_DOMAIN}/api/tag/${clientSlug}" async></script>`}
                 className="font-mono text-xs"
                 onClick={(e) => e.currentTarget.select()}
               />
