@@ -113,6 +113,21 @@ npm run lint
 - Confirmado contra o servidor real da agência (não é só doc): `apikey` do
   servidor Evolution vai no header `apikey`; do Chatwoot vai no header
   `api-access-token` (com hífen, não underscore).
+- **Vincular instância existente** (`linkExistingInstance` em
+  `src/lib/whatsapp/actions.ts`): pros ~25 clientes que já estavam conectados
+  no servidor Evolution/Chatwoot da agência antes dessa plataforma existir —
+  só lê o que já existe (`GET /instance/fetchInstances?instanceName=X` com a
+  apikey global, que já retorna a apikey da instância e o nome da inbox do
+  Chatwoot configurada) e grava no nosso banco. Não cria nada, não gera QR
+  code, não toca na instância real. O nome da instância real **não é igual
+  ao slug do cliente** (ex: `C52-DrLucasPitao`) — por isso existe a coluna
+  `settings.evolution_instance_name`, separada do slug.
+- **Atenção a versões diferentes do Evolution**: o formato de resposta do
+  `fetchInstances` varia — a v1 usada nos testes iniciais retorna
+  `{"instance": {...}}` com `apikey`/`chatwoot.name_inbox` (snake_case); o
+  servidor real da agência (mais novo) retorna um **array direto** com
+  `token`/`Chatwoot.nameInbox` (camelCase). `findInstanceByName` em
+  `src/lib/evolution/client.ts` trata os dois formatos.
 
 ## Dashboards finais (Fase 7)
 

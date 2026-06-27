@@ -3,9 +3,16 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { connectWhatsapp, getWhatsappStatus, syncChatwootInbox } from "@/lib/whatsapp/actions";
+import {
+  connectWhatsapp,
+  getWhatsappStatus,
+  syncChatwootInbox,
+  linkExistingInstance,
+} from "@/lib/whatsapp/actions";
 
 export function WhatsappConnect({
   clientId,
@@ -18,6 +25,7 @@ export function WhatsappConnect({
 }) {
   const [qrcode, setQrcode] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [instanceName, setInstanceName] = useState("");
   const [pending, startTransition] = useTransition();
 
   return (
@@ -81,6 +89,41 @@ export function WhatsappConnect({
           Sincronizar inbox do Chatwoot
         </Button>
       </div>
+
+      {!hasInstance && (
+        <div className="space-y-2 pt-2 border-t">
+          <Label htmlFor="instance_name">Ou vincular instância já existente no servidor</Label>
+          <div className="flex gap-2">
+            <Input
+              id="instance_name"
+              placeholder="Nome exato da instância no Evolution"
+              value={instanceName}
+              onChange={(e) => setInstanceName(e.target.value)}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending || !instanceName.trim()}
+              onClick={() =>
+                startTransition(async () => {
+                  try {
+                    const result = await linkExistingInstance(clientId, instanceName);
+                    toast.success(
+                      result.inboxLinked
+                        ? "Instância e inbox do Chatwoot vinculadas"
+                        : `Instância vinculada, mas a inbox "${result.chatwootInboxName ?? "?"}" não foi encontrada no Chatwoot`,
+                    );
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Erro ao vincular instância");
+                  }
+                })
+              }
+            >
+              Vincular
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

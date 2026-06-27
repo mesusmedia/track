@@ -62,6 +62,27 @@ export async function getConnectionState(instanceName: string, instanceApiKey: s
   return (body.instance?.state ?? "unknown") as string;
 }
 
+// busca uma instancia ja existente no servidor Evolution (cliente que ja
+// estava conectado antes de existir essa plataforma) -- nao cria nada, so
+// le. Formato de resposta varia por versao do Evolution: pode vir como
+// array direto (servidor novo) ou {instance: {...}} (servidor antigo).
+export async function findInstanceByName(instanceName: string) {
+  const res = await fetch(`${BASE_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
+    headers: globalHeaders(),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  const entry = Array.isArray(body) ? body[0] : body?.instance;
+  if (!entry) return null;
+
+  return {
+    apikey: (entry.token ?? entry.apikey) as string,
+    chatwootInboxName: (entry.Chatwoot?.nameInbox ?? entry.chatwoot?.name_inbox ?? null) as
+      | string
+      | null,
+  };
+}
+
 export async function deleteInstance(instanceName: string) {
   await fetch(`${BASE_URL}/instance/delete/${instanceName}`, {
     method: "DELETE",
