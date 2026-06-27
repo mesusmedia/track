@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NewClientDialog } from "./clients/new-client-dialog";
-import { Settings } from "lucide-react";
+import { Settings, KanbanSquare } from "lucide-react";
 
 export default async function AdminHomePage() {
   const supabase = await createClient();
@@ -46,7 +46,15 @@ export default async function AdminHomePage() {
                   <TableCell className="text-right">
                     <Badge variant="secondary">Ativo</Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="flex gap-1 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      nativeButton={false}
+                      render={<Link href={`/admin/clients/${c.id}/crm`} />}
+                    >
+                      <KanbanSquare className="size-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

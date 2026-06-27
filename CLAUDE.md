@@ -69,6 +69,25 @@ npm run lint
 - Dispatch de evento (Meta CAPI + GA4) extraído pra `src/lib/dispatch.ts`,
   compartilhado entre `/api/event` e o webhook de compra.
 
+## CRM kanban (Fase 5)
+
+- `pipeline_stages`/`leads`/`automation_rules`, todas por `client_id`. 5 estágios
+  padrão (Novo, Em atendimento, Agendado, Vendido, Perdido) semeados na criação
+  do cliente (`src/app/admin/clients/actions.ts`).
+- `/api/webhook/chatwoot?token=...` (mesmo `webhook_token` do webhook de
+  compra) — evento `message_created`: primeira mensagem da conversa cria o
+  lead na 1ª etapa e tenta linkar `trck_user_id` pelo ref code de 8 chars
+  (`src/lib/visitors.ts#extractRefCode`); mensagens `outgoing` (da equipe) são
+  comparadas contra `automation_rules` (substring case-insensitive) e movem o
+  lead de etapa automaticamente. **Campos seguem o formato publicamente
+  documentado do Chatwoot — confirmar com payload real antes de produção.**
+- UI: `src/components/crm-board.tsx` — board simples (sem drag-and-drop, troca
+  de etapa por `<Select>`) + gestão de regras de automação. Página em
+  `/admin/clients/[id]/crm` e `/cliente/crm`.
+- Gotcha do Base UI `Select`: `SelectValue` mostra o **valor bruto** quando o
+  valor não é a label diretamente — para mostrar o nome da etapa em vez do
+  `uuid`, passar uma função em `children`: `<SelectValue>{(id) => label(id)}</SelectValue>`.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`
@@ -84,7 +103,7 @@ npm run lint
 - [x] Fase 2 — Modelo de dados de tracking + captura
 - [x] Fase 3 — Integração Meta CAPI + GA4
 - [x] Fase 4 — Webhook de compra + vinculação
-- [ ] Fase 5 — CRM kanban + automação por palavra-chave
+- [x] Fase 5 — CRM kanban + automação por palavra-chave
 - [ ] Fase 6 — WhatsApp (Evolution API) + Chatwoot
 - [ ] Fase 7 — Dashboards finais
 - [ ] Fase 8 — Auditoria de segurança + publicação

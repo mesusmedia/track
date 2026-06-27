@@ -41,6 +41,12 @@ export async function createClientAction(formData: FormData) {
   if (settingsErr) throw settingsErr;
   void settings;
 
+  const defaultStages = ["Novo", "Em atendimento", "Agendado", "Vendido", "Perdido"];
+  const { error: stagesErr } = await supabase.from("pipeline_stages").insert(
+    defaultStages.map((name, position) => ({ client_id: client.id, name, position })),
+  );
+  if (stagesErr) throw stagesErr;
+
   const tempPassword = randomBytes(9).toString("base64url");
   const { data: userRes, error: userErr } = await supabase.auth.admin.createUser({
     email,
