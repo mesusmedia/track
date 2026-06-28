@@ -228,6 +228,48 @@ npm run lint
   aprovação da API; o `gclid` automático + nome de campanha pela API é o
   upgrade incremental, não bloqueia nada.
 
+## Qualidade do lead capturado (filtros pós-incidente)
+
+- **Mensagem de sistema do Evolution**: toda vez que o webhook de uma
+  instância é configurado/atualizado, o próprio Evolution manda uma
+  notificação via contato fake `"EvolutionAPI"` com número curto (`+123456`).
+  Sem filtro, isso virava lead fantasma. `/api/webhook/chatwoot` ignora
+  (sem criar lead) quando `contact.name === "EvolutionAPI"` (case-insensitive)
+  ou o telefone normalizado tem menos de 8 dígitos — esse mesmo critério de
+  telefone curto também cobre **conversas de grupo do WhatsApp** (não têm
+  telefone individual). Mesmo tipo de filtro que o n8n antigo já fazia pra só
+  deixar passar conversa real (Google, Meta, orgânico, Instagram).
+- **Corrida real entre criar o lead e resolver o anúncio**: resolver o nome
+  do anúncio via Graph API (`resolveAdFromSourceId`) as vezes demora mais que
+  o Chatwoot levar pra processar e criar o lead — quando isso acontece, o
+  lead nasce sem atribuição e ficava assim pra sempre (só atribuía no
+  momento da criação). Corrigido em `/api/webhook/evolution/route.ts`: depois
+  de gravar em `ad_attribution_staging`, faz um **backfill retroativo** no
+  lead já criado (mesmo `client_id`+telefone, janela de 10min, só se ainda
+  não tiver `campaign_name`/`ctwa_clid`). Isso só cobre leads criados
+  *depois* desse fix existir — leads antigos presos numa corrida anterior
+  precisam de backfill manual one-off lendo o `ad_attribution_staging` já
+  existente (feito uma vez, ver histórico do commit "Corrige corrida de
+  atribuicao...").
+- **Incidente real e causa raiz a não esquecer**: o webhook de conta do
+  Chatwoot (`message_created`) é uma config **global**, não por inbox/cliente
+  — se ele cair/desregistrar (já aconteceu, sem causa identificada), **todos
+  os clientes simultaneamente** param de gerar lead, silenciosamente (sem
+  erro visível). Verificar com `GET /api/v1/accounts/{id}/webhooks` na conta
+  Chatwoot se isso for suspeitado de novo (lead "que devia ter chegado e não
+  chegou" em qualquer cliente é o sintoma).
+
+## Visão geral (admin) — filtro de período e origem
+
+- Seletor de período (7/30/90 dias, `src/components/period-filter.tsx`,
+  client component via querystring `?period=N`) controla faturamento,
+  contagem de leads e quebra por origem na página `/admin`. A tabela "Leads
+  recentes" respeita o mesmo período (`gte(created_at, sinceSelected)` +
+  `limit(30)`).
+- Card "Origem dos leads": contagem por `originOf()` (Meta se `ctwa_clid`/
+  `source_id`; Google se `campaign_name`; senão `utm_source` cru; senão
+  "Não identificada") — mesma função usada na coluna Origem da tabela.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`
