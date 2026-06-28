@@ -28,9 +28,13 @@ export async function addIntegrationAccount(type: IntegrationType, formData: For
   const { table, idField, secretField } = TABLES[type];
 
   const label = String(formData.get("label") ?? "").trim();
-  const idValue = String(formData.get(idField) ?? "").trim();
+  let idValue = String(formData.get(idField) ?? "").trim();
   const secret = String(formData.get("secret") ?? "").trim();
   if (!label || !idValue || !secret) throw new Error("Preencha todos os campos");
+
+  // Graph API exige o prefixo "act_" no ad_account_id -- normaliza aqui pra
+  // nao depender do usuario lembrar de digitar.
+  if (type === "meta_ads" && !idValue.startsWith("act_")) idValue = `act_${idValue}`;
 
   const supabase = createServiceClient();
   const { error } = await supabase.from(table).insert({
