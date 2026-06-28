@@ -69,7 +69,12 @@ export async function loadIntegrationAccounts(clientId: string) {
         id: a.id,
         label: a.label,
         idValue: a.customer_id,
-        masked: maskSecret(decryptSecret(byteaToBuffer(a.refresh_token_enc))),
+        // contas cadastradas pelo fluxo agencia-wide (gclid -> token unico da
+        // agencia, ver CLAUDE.md) nao tem refresh_token_enc proprio -- so as
+        // antigas, por-cliente, tem.
+        masked: a.refresh_token_enc
+          ? maskSecret(decryptSecret(byteaToBuffer(a.refresh_token_enc)))
+          : "token da agência (MCC)",
       }),
     ),
   };
