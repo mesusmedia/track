@@ -26,11 +26,14 @@ export default async function AdminHomePage() {
   );
   const maxBucket = Math.max(1, ...weekBuckets);
 
-  const [{ count: totalClients }, { data: purchases }, { count: leads30d }, { data: recentLeads }] =
+  const [{ count: totalClients }, { data: purchases }, { data: leads30dRows }, { data: recentLeads }] =
     await Promise.all([
       supabase.from("clients").select("id", { count: "exact", head: true }),
       supabase.from("purchases").select("valor").eq("status", "paid"),
-      supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", since30d),
+      supabase
+        .from("leads")
+        .select("ctwa_clid, source_id, campaign_name, utm_source")
+        .gte("created_at", since30d),
       supabase
         .from("leads")
         .select(
@@ -49,6 +52,14 @@ export default async function AdminHomePage() {
     return null;
   }
 
+  const leads30d = leads30dRows?.length ?? 0;
+  const originCounts = (leads30dRows ?? []).reduce<Record<string, number>>((acc, lead) => {
+    const origin = originOf(lead) ?? "Não identificada";
+    acc[origin] = (acc[origin] ?? 0) + 1;
+    return acc;
+  }, {});
+  const topOrigins = Object.entries(originCounts).sort((a, b) => b[1] - a[1]);
+
   const leadRows = (recentLeads ?? []).map((lead) => ({
     id: lead.id as string,
     name: (lead.name as string | null) ?? (lead.phone as string | null) ?? "Sem nome",
@@ -61,7 +72,7 @@ export default async function AdminHomePage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card border rounded-xl p-4">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -103,6 +114,24 @@ export default async function AdminHomePage() {
           <div className="text-2xl font-semibold mt-2">{totalClients ?? 0}</div>
           <div className="mt-4 pt-4 border-t flex items-center justify-between">
             <span className="text-[10px] text-muted-foreground">cadastrados na agência</span>
+          </div>
+        </div>
+
+        <div className="bg-card border rounded-xl p-4">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Origem dos leads (30d)
+          </span>
+          <div className="mt-2 space-y-1.5">
+            {topOrigins.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Sem leads no período.</p>
+            ) : (
+              topOrigins.map(([origin, count]) => (
+                <div key={origin} className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground truncate">{origin}</span>
+                  <span className="font-semibold tabular-nums">{count}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

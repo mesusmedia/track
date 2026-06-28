@@ -73,5 +73,27 @@ export async function POST(request: Request) {
   const { error } = await supabase.from("ad_attribution_staging").insert(staging);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // corrida real: resolver o nome do anuncio via Graph API as vezes demora
+  // mais que o Chatwoot levar pra processar e criar o lead -- se o lead ja
+  // existe (sem atribuicao ainda), atualiza retroativamente em vez de deixar
+  // "Origem" em branco pra sempre.
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  await supabase
+    .from("leads")
+    .update({
+      source_id: staging.source_id ?? null,
+      ctwa_clid: staging.ctwa_clid ?? null,
+      ad_id: staging.ad_id ?? null,
+      ad_name: staging.ad_name ?? null,
+      adset_name: staging.adset_name ?? null,
+      campaign_name: staging.campaign_name ?? null,
+      account_name: staging.account_name ?? null,
+    })
+    .eq("client_id", clientId)
+    .ilike("phone", `%${phone}%`)
+    .is("campaign_name", null)
+    .is("ctwa_clid", null)
+    .gte("created_at", since);
+
   return NextResponse.json({ staged: true });
 }
