@@ -187,10 +187,14 @@ npm run lint
   Vercel Cron (`vercel.json` → `/api/cron/refresh-meta-token`, protegido por
   `CRON_SECRET`). Reaproveitado o Client ID/Secret do app Meta que a agência
   já usava no n8n.
-- **Rollout em piloto**: o webhook novo no Evolution foi registrado só numa
-  instância de teste antes de aplicar nas ~33 reais — checar se já foi
-  expandido pra todas antes de assumir que está ativo em produção pra todo
-  cliente.
+- **Rollout**: expandido das 2 instâncias piloto (`teste-google`,
+  `C52-DrLucasPitao`) pras 27 instâncias reais já vinculadas (todas com
+  `chatwoot_inbox_id` preenchido) — registrado via `POST /webhook/set/{instance}`
+  com a apikey global. Os 4 clientes cuja instância não foi encontrada no
+  Evolution (nome divergente do slug — `C153-DraLorennaCampos`,
+  `C161-Botocenteralphaville`, `C72-OralCenterPortugal`,
+  `C123-OrgulhodeSorrirSantos`) ainda não têm webhook nenhum registrado;
+  cliente novo vinculado depois precisa do mesmo passo manual.
 
 ## Atribuição de anúncio — Google Ads (gclid → campanha/grupo/anúncio)
 
