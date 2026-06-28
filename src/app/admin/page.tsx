@@ -1,33 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { MoreHorizontal } from "lucide-react";
+import { RecentLeadsTable } from "@/components/recent-leads-table";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function relativeTime(iso: string) {
-  const diffMin = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (diffMin < 1) return "agora";
-  if (diffMin < 60) return `${diffMin} min`;
-  const diffH = Math.round(diffMin / 60);
-  if (diffH < 24) return `${diffH}h`;
-  return `${Math.round(diffH / 24)}d`;
-}
-
-const STAGE_COLORS: Record<string, string> = {
-  vendido: "bg-[#4ade80]/10 border-[#4ade80]/20 text-[#4ade80] [&_div]:bg-[#4ade80]",
-  perdido: "bg-[#f87171]/10 border-[#f87171]/20 text-[#f87171] [&_div]:bg-[#f87171]",
-};
-const DEFAULT_STAGE_COLOR = "bg-[#fbbf24]/10 border-[#fbbf24]/20 text-[#fbbf24] [&_div]:bg-[#fbbf24]";
-
-function StagePill({ name }: { name: string }) {
-  const color = STAGE_COLORS[name.trim().toLowerCase()] ?? DEFAULT_STAGE_COLOR;
-  return (
-    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${color}`}>
-      <div className="size-1.5 rounded-full" />
-      <span className="text-[10px] font-bold uppercase">{name}</span>
-    </div>
-  );
 }
 
 export default async function AdminHomePage() {
@@ -59,10 +35,19 @@ export default async function AdminHomePage() {
         .from("leads")
         .select("id, name, phone, revenue, created_at, clients(name), pipeline_stages(name)")
         .order("created_at", { ascending: false })
-        .limit(8),
+        .limit(30),
     ]);
 
   const totalRevenue = (purchases ?? []).reduce((sum, p) => sum + Number(p.valor ?? 0), 0);
+
+  const leadRows = (recentLeads ?? []).map((lead) => ({
+    id: lead.id as string,
+    name: (lead.name as string | null) ?? (lead.phone as string | null) ?? "Sem nome",
+    clientName: (lead.clients as unknown as { name: string } | null)?.name ?? "—",
+    stageName: (lead.pipeline_stages as unknown as { name: string } | null)?.name ?? null,
+    createdAt: lead.created_at as string,
+    revenue: lead.revenue as number | null,
+  }));
 
   return (
     <div className="space-y-6">
@@ -112,54 +97,7 @@ export default async function AdminHomePage() {
         </div>
       </div>
 
-      <div className="bg-card border rounded-xl overflow-hidden">
-        <div className="p-5 border-b">
-          <h2 className="text-base font-semibold">Leads recentes</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Últimos leads recebidos, todos os clientes</p>
-        </div>
-        {!recentLeads || recentLeads.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-5">Nenhum lead ainda.</p>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="bg-accent/40">
-                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Lead
-                </th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Cliente
-                </th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Etapa
-                </th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Quando
-                </th>
-                <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Receita
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {recentLeads.map((lead) => {
-                const clientName = (lead.clients as unknown as { name: string } | null)?.name ?? "—";
-                const stageName = (lead.pipeline_stages as unknown as { name: string } | null)?.name;
-                return (
-                  <tr key={lead.id} className="hover:bg-accent/30 transition-colors">
-                    <td className="px-5 py-3 text-sm font-medium">{lead.name ?? lead.phone ?? "Sem nome"}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{clientName}</td>
-                    <td className="px-4 py-3">{stageName ? <StagePill name={stageName} /> : "—"}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{relativeTime(lead.created_at)}</td>
-                    <td className="px-5 py-3 text-right text-xs font-semibold tabular-nums">
-                      {lead.revenue ? formatBRL(Number(lead.revenue)) : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <RecentLeadsTable leads={leadRows} />
     </div>
   );
 }

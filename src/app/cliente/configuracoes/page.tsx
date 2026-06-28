@@ -14,10 +14,5 @@ export default async function ClienteConfigPage() {
     loadIntegrationAccounts(profile.client_id),
   ]);
 
-  return (
-    <div className="space-y-4">
-      <h1 className="text-lg font-semibold">Configurações</h1>
-      <IntegrationSettings clientId={profile.client_id} clientSlug={client!.slug} {...accounts} />
-    </div>
-  );
+  return <IntegrationSettings clientId={profile.client_id} clientSlug={client!.slug} {...accounts} />;
 }

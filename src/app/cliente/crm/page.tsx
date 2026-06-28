@@ -9,10 +9,5 @@ export default async function ClienteCrmPage() {
 
   const { stages, leads, rules } = await loadCrmData(profile.client_id);
 
-  return (
-    <div className="space-y-4">
-      <h1 className="text-lg font-semibold">CRM</h1>
-      <CrmBoard clientId={profile.client_id} stages={stages} leads={leads} rules={rules} />
-    </div>
-  );
+  return <CrmBoard clientId={profile.client_id} stages={stages} leads={leads} rules={rules} />;
 }

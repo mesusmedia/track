@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { loadOverview } from "@/lib/dashboard/load";
 import { DashboardOverview } from "@/components/dashboard-overview";
+import { ClientSubNav } from "@/components/client-subnav";
 
 export default async function AdminClientVisaoGeralPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,10 +13,7 @@ export default async function AdminClientVisaoGeralPage({ params }: { params: Pr
   const data = await loadOverview(id);
   return (
     <div className="space-y-4">
-      <Link href="/admin" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Voltar
-      </Link>
-      <h1 className="text-lg font-semibold">{client.name} — Visão geral</h1>
+      <ClientSubNav clientId={id} clientName={client.name} />
       <DashboardOverview data={data} />
     </div>
   );
