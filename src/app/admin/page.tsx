@@ -1,14 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { MoreHorizontal } from "lucide-react";
 import { RecentLeadsTable } from "@/components/recent-leads-table";
+import { PeriodFilter } from "@/components/period-filter";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export default async function AdminHomePage() {
+export default async function AdminHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const { period } = await searchParams;
+  const periodDays = Number(period) > 0 ? Number(period) : 30;
   const supabase = await createClient();
-  const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sinceSelected = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString();
 
   // ponytail: 5 queries de count em sequencia de semanas pra montar a
   // sparkline de leads -- sem tabela de agregacao, ok pro volume atual.
@@ -29,16 +36,17 @@ export default async function AdminHomePage() {
   const [{ count: totalClients }, { data: purchases }, { data: leads30dRows }, { data: recentLeads }] =
     await Promise.all([
       supabase.from("clients").select("id", { count: "exact", head: true }),
-      supabase.from("purchases").select("valor").eq("status", "paid"),
+      supabase.from("purchases").select("valor").eq("status", "paid").gte("created_at", sinceSelected),
       supabase
         .from("leads")
         .select("ctwa_clid, source_id, campaign_name, utm_source")
-        .gte("created_at", since30d),
+        .gte("created_at", sinceSelected),
       supabase
         .from("leads")
         .select(
           "id, name, phone, revenue, created_at, ctwa_clid, source_id, campaign_name, utm_source, clients(name), pipeline_stages(name)",
         )
+        .gte("created_at", sinceSelected)
         .order("created_at", { ascending: false })
         .limit(30),
     ]);
@@ -72,11 +80,15 @@ export default async function AdminHomePage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <PeriodFilter />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card border rounded-xl p-4">
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Leads (5 semanas)
+              Leads (período)
             </span>
             <MoreHorizontal className="size-4 text-muted-foreground/60" />
           </div>
@@ -93,7 +105,7 @@ export default async function AdminHomePage() {
             </div>
           </div>
           <div className="mt-4 pt-4 border-t flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground">últimos 30 dias</span>
+            <span className="text-[10px] text-muted-foreground">últimos {periodDays} dias</span>
           </div>
         </div>
 
@@ -103,7 +115,7 @@ export default async function AdminHomePage() {
           </span>
           <div className="text-2xl font-semibold mt-2">{formatBRL(totalRevenue)}</div>
           <div className="mt-4 pt-4 border-t flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground">todas as contas de pagamento</span>
+            <span className="text-[10px] text-muted-foreground">últimos {periodDays} dias</span>
           </div>
         </div>
 
@@ -119,7 +131,7 @@ export default async function AdminHomePage() {
 
         <div className="bg-card border rounded-xl p-4">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Origem dos leads (30d)
+            Origem dos leads ({periodDays}d)
           </span>
           <div className="mt-2 space-y-1.5">
             {topOrigins.length === 0 ? (
