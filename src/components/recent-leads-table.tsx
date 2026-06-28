@@ -8,9 +8,20 @@ type LeadRow = {
   name: string;
   clientName: string;
   stageName: string | null;
+  origin: string | null;
   createdAt: string;
   revenue: number | null;
 };
+
+const ORIGIN_COLORS: Record<string, string> = {
+  meta: "bg-[#378ADD]/10 border-[#378ADD]/20 text-[#378ADD]",
+  google: "bg-[#639922]/10 border-[#639922]/20 text-[#639922]",
+};
+
+function OriginPill({ origin }: { origin: string }) {
+  const color = ORIGIN_COLORS[origin.trim().toLowerCase()] ?? "bg-accent border-border text-muted-foreground";
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase ${color}`}>{origin}</span>;
+}
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -42,9 +53,9 @@ function StagePill({ name }: { name: string }) {
 }
 
 function exportCsv(rows: LeadRow[]) {
-  const header = "Lead,Cliente,Etapa,Criado em,Receita";
+  const header = "Lead,Cliente,Etapa,Origem,Criado em,Receita";
   const lines = rows.map((r) =>
-    [r.name, r.clientName, r.stageName ?? "", new Date(r.createdAt).toLocaleString("pt-BR"), r.revenue ?? ""]
+    [r.name, r.clientName, r.stageName ?? "", r.origin ?? "", new Date(r.createdAt).toLocaleString("pt-BR"), r.revenue ?? ""]
       .map((v) => `"${String(v).replace(/"/g, '""')}"`)
       .join(","),
   );
@@ -109,6 +120,9 @@ export function RecentLeadsTable({ leads }: { leads: LeadRow[] }) {
                 Etapa
               </th>
               <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Origem
+              </th>
+              <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Quando
               </th>
               <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -122,6 +136,7 @@ export function RecentLeadsTable({ leads }: { leads: LeadRow[] }) {
                 <td className="px-5 py-3 text-sm font-medium">{lead.name}</td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{lead.clientName}</td>
                 <td className="px-4 py-3">{lead.stageName ? <StagePill name={lead.stageName} /> : "—"}</td>
+                <td className="px-4 py-3">{lead.origin ? <OriginPill origin={lead.origin} /> : "—"}</td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{relativeTime(lead.createdAt)}</td>
                 <td className="px-5 py-3 text-right text-xs font-semibold tabular-nums">
                   {lead.revenue ? formatBRL(Number(lead.revenue)) : "—"}

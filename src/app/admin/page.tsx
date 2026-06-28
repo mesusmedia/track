@@ -33,18 +33,28 @@ export default async function AdminHomePage() {
       supabase.from("leads").select("id", { count: "exact", head: true }).gte("created_at", since30d),
       supabase
         .from("leads")
-        .select("id, name, phone, revenue, created_at, clients(name), pipeline_stages(name)")
+        .select(
+          "id, name, phone, revenue, created_at, ctwa_clid, source_id, campaign_name, utm_source, clients(name), pipeline_stages(name)",
+        )
         .order("created_at", { ascending: false })
         .limit(30),
     ]);
 
   const totalRevenue = (purchases ?? []).reduce((sum, p) => sum + Number(p.valor ?? 0), 0);
 
+  function originOf(lead: { ctwa_clid: string | null; source_id: string | null; campaign_name: string | null; utm_source: string | null }) {
+    if (lead.ctwa_clid || lead.source_id) return "Meta";
+    if (lead.campaign_name) return "Google";
+    if (lead.utm_source) return lead.utm_source;
+    return null;
+  }
+
   const leadRows = (recentLeads ?? []).map((lead) => ({
     id: lead.id as string,
     name: (lead.name as string | null) ?? (lead.phone as string | null) ?? "Sem nome",
     clientName: (lead.clients as unknown as { name: string } | null)?.name ?? "—",
     stageName: (lead.pipeline_stages as unknown as { name: string } | null)?.name ?? null,
+    origin: originOf(lead),
     createdAt: lead.created_at as string,
     revenue: lead.revenue as number | null,
   }));
