@@ -53,6 +53,17 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!lead) {
+    // filtra mensagens de sistema -- o proprio Evolution manda uma
+    // notificacao de "instancia conectada"/config de webhook por um contato
+    // fake chamado "EvolutionAPI" com numero curto (+123456), nao e lead de
+    // verdade. Mesmo filtro que o n8n antigo fazia.
+    const contactName = String(body.contact?.name ?? body.sender?.name ?? "").trim();
+    const rawPhone = String(body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? "");
+    const phoneDigits = rawPhone.replace(/\D/g, "");
+    if (contactName.toLowerCase() === "evolutionapi" || phoneDigits.length < 8) {
+      return NextResponse.json({ ignored: true, reason: "mensagem de sistema" });
+    }
+
     // primeira mensagem dessa conversa -- cria o lead na primeira etapa do funil
     const { data: firstStage } = await supabase
       .from("pipeline_stages")
