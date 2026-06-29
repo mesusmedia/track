@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { resolveAdFromSourceId } from "@/lib/meta/ads-insights";
 import { getMetaAppToken } from "@/lib/meta/token";
-import { GOOGLE_MARKER } from "@/lib/ad-attribution";
+import { matchesGoogleMarker } from "@/lib/ad-attribution";
 
 // webhook nativo do Evolution (messages.upsert) -- diferente do webhook do
 // Chatwoot (Fase 5/6): esse chega ANTES do Chatwoot processar a mensagem e
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         staging.account_name = resolved.accountName;
       }
     }
-  } else if (text.toLowerCase().includes(GOOGLE_MARKER)) {
+  } else if (matchesGoogleMarker(text)) {
     staging.origin = "google";
   } else {
     return NextResponse.json({ ignored: true });

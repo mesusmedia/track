@@ -4,7 +4,7 @@ import { isRateLimited } from "@/lib/rate-limit";
 import { findVisitorById, extractRefCode } from "@/lib/visitors";
 import { resolveAdFromGclid } from "@/lib/google-ads/client";
 import { maybeDispatchPurchaseForLead } from "@/lib/crm/dispatch-purchase";
-import { GOOGLE_MARKER } from "@/lib/ad-attribution";
+import { matchesGoogleMarker } from "@/lib/ad-attribution";
 
 // ponytail: campos seguem o formato publicamente documentado do webhook
 // "message_created" do Chatwoot -- conferir com um payload real do Chatwoot
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     // (numero salvo, indicacao, etc) -- fora do escopo desse tracking.
     const hasAttribution =
       Boolean(adData?.source_id || adData?.ctwa_clid || googleAdData?.campaignName || visitor) ||
-      content.toLowerCase().includes(GOOGLE_MARKER);
+      matchesGoogleMarker(content);
     if (!hasAttribution) {
       return NextResponse.json({ ignored: true, reason: "sem atribuicao de campanha" });
     }
