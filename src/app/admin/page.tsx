@@ -2,6 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { MoreHorizontal } from "lucide-react";
 import { RecentLeadsTable } from "@/components/recent-leads-table";
 import { PeriodFilter } from "@/components/period-filter";
+import { AutoRefresh } from "@/components/auto-refresh";
+
+const ORIGIN_ORDER = ["Meta", "Google", "Não identificada"];
+const ORIGIN_BAR_COLORS: Record<string, string> = {
+  Meta: "bg-[#378ADD]",
+  Google: "bg-[#639922]",
+  "Não identificada": "bg-muted-foreground/40",
+};
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -61,12 +69,18 @@ export default async function AdminHomePage({
   }
 
   const leads30d = leads30dRows?.length ?? 0;
+  const originBucketOf = (origin: string | null) => {
+    if (origin === "Meta") return "Meta";
+    if (origin === "Google" || origin === "google") return "Google";
+    return "Não identificada";
+  };
   const originCounts = (leads30dRows ?? []).reduce<Record<string, number>>((acc, lead) => {
-    const origin = originOf(lead) ?? "Não identificada";
-    acc[origin] = (acc[origin] ?? 0) + 1;
+    const bucket = originBucketOf(originOf(lead));
+    acc[bucket] = (acc[bucket] ?? 0) + 1;
     return acc;
   }, {});
-  const topOrigins = Object.entries(originCounts).sort((a, b) => b[1] - a[1]);
+  const originBars = ORIGIN_ORDER.map((origin) => ({ origin, count: originCounts[origin] ?? 0 }));
+  const maxOriginCount = Math.max(1, ...originBars.map((b) => b.count));
 
   const leadRows = (recentLeads ?? []).map((lead) => ({
     id: lead.id as string,
@@ -133,21 +147,30 @@ export default async function AdminHomePage({
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Origem dos leads ({periodDays}d)
           </span>
-          <div className="mt-2 space-y-1.5">
-            {topOrigins.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Sem leads no período.</p>
-            ) : (
-              topOrigins.map(([origin, count]) => (
-                <div key={origin} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground truncate">{origin}</span>
-                  <span className="font-semibold tabular-nums">{count}</span>
+          <div className="mt-3 flex items-end justify-between gap-3 h-16">
+            {originBars.map(({ origin, count }) => (
+              <div key={origin} className="flex-1 flex flex-col items-center gap-1.5">
+                <span className="text-xs font-semibold tabular-nums">{count}</span>
+                <div className="w-full flex items-end h-10">
+                  <div
+                    className={`w-full rounded-t-sm ${ORIGIN_BAR_COLORS[origin]}`}
+                    style={{ height: `${Math.max(6, (count / maxOriginCount) * 100)}%` }}
+                  />
                 </div>
-              ))
-            )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 pt-3 border-t flex items-center justify-between gap-2">
+            {originBars.map(({ origin }) => (
+              <span key={origin} className="text-[9px] text-muted-foreground text-center flex-1 truncate">
+                {origin}
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
+      <AutoRefresh />
       <RecentLeadsTable leads={leadRows} />
     </div>
   );
