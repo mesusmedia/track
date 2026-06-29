@@ -50,11 +50,19 @@ function LeadAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | nu
   );
 }
 
+// Novo/Em contato: cinza -- Em atendimento: azul claro -- Agendado:
+// amarelo/laranja -- Vendido/Ganha: verde -- Perdido: vermelho.
 const STAGE_COLORS: Record<string, string> = {
+  novo: "bg-[#9ca3af]/10 border-[#9ca3af]/20 text-[#9ca3af] [&_div]:bg-[#9ca3af]",
+  "em contato": "bg-[#9ca3af]/10 border-[#9ca3af]/20 text-[#9ca3af] [&_div]:bg-[#9ca3af]",
+  "em atendimento": "bg-[#38bdf8]/10 border-[#38bdf8]/20 text-[#38bdf8] [&_div]:bg-[#38bdf8]",
+  agendado: "bg-[#fb923c]/10 border-[#fb923c]/20 text-[#fb923c] [&_div]:bg-[#fb923c]",
   vendido: "bg-[#4ade80]/10 border-[#4ade80]/20 text-[#4ade80] [&_div]:bg-[#4ade80]",
+  ganha: "bg-[#4ade80]/10 border-[#4ade80]/20 text-[#4ade80] [&_div]:bg-[#4ade80]",
+  ganho: "bg-[#4ade80]/10 border-[#4ade80]/20 text-[#4ade80] [&_div]:bg-[#4ade80]",
   perdido: "bg-[#f87171]/10 border-[#f87171]/20 text-[#f87171] [&_div]:bg-[#f87171]",
 };
-const DEFAULT_STAGE_COLOR = "bg-[#fbbf24]/10 border-[#fbbf24]/20 text-[#fbbf24] [&_div]:bg-[#fbbf24]";
+const DEFAULT_STAGE_COLOR = "bg-[#9ca3af]/10 border-[#9ca3af]/20 text-[#9ca3af] [&_div]:bg-[#9ca3af]";
 
 function StagePill({ name }: { name: string }) {
   const color = STAGE_COLORS[name.trim().toLowerCase()] ?? DEFAULT_STAGE_COLOR;
