@@ -52,7 +52,7 @@ export default async function AdminHomePage({
       supabase
         .from("leads")
         .select(
-          "id, name, phone, revenue, created_at, ctwa_clid, source_id, campaign_name, utm_source, clients(name), pipeline_stages(name)",
+          "id, name, phone, avatar_url, revenue, created_at, ctwa_clid, source_id, campaign_name, utm_source, clients(name), pipeline_stages(name)",
         )
         .gte("created_at", sinceSelected)
         .order("created_at", { ascending: false })
@@ -85,6 +85,8 @@ export default async function AdminHomePage({
   const leadRows = (recentLeads ?? []).map((lead) => ({
     id: lead.id as string,
     name: (lead.name as string | null) ?? (lead.phone as string | null) ?? "Sem nome",
+    phone: lead.phone as string | null,
+    avatarUrl: lead.avatar_url as string | null,
     clientName: (lead.clients as unknown as { name: string } | null)?.name ?? "—",
     stageName: (lead.pipeline_stages as unknown as { name: string } | null)?.name ?? null,
     origin: originOf(lead),

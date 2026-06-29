@@ -1,12 +1,60 @@
 import { createClient } from "@/lib/supabase/server";
 
-const THIRTY_DAYS_AGO = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+function originOf(lead: {
+  ctwa_clid: string | null;
+  source_id: string | null;
+  campaign_name: string | null;
+  utm_source: string | null;
+}) {
+  if (lead.ctwa_clid || lead.source_id) return "Meta";
+  if (lead.campaign_name) return "Google";
+  if (lead.utm_source) return lead.utm_source;
+  return null;
+}
 
-export async function loadOverview(clientId: string) {
+export async function loadOverview(clientId: string, periodDays = 30) {
   const supabase = await createClient();
-  const since = THIRTY_DAYS_AGO();
+  const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const [eventsRes, purchasesRes, leadsRes, stagesRes] = await Promise.all([
+  // ponytail: 5 buckets fixos de semana (independente do periodo
+  // selecionado) pra sparkline dos cards -- mesmo padrao da Visao geral
+  // do admin, sem tabela de agregacao.
+  const weekBuckets = await Promise.all(
+    [4, 3, 2, 1, 0].map(async (weeksAgo) => {
+      const from = new Date(Date.now() - (weeksAgo + 1) * 7 * 24 * 60 * 60 * 1000).toISOString();
+      const to = new Date(Date.now() - weeksAgo * 7 * 24 * 60 * 60 * 1000).toISOString();
+      const [leadsCount, eventsCount, purchasesRows] = await Promise.all([
+        supabase
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", clientId)
+          .gte("created_at", from)
+          .lt("created_at", to),
+        supabase
+          .from("events_log")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", clientId)
+          .gte("created_at", from)
+          .lt("created_at", to),
+        supabase
+          .from("purchases")
+          .select("valor")
+          .eq("client_id", clientId)
+          .eq("status", "paid")
+          .gte("created_at", from)
+          .lt("created_at", to),
+      ]);
+      const revenue = (purchasesRows.data ?? []).reduce((sum, p) => sum + Number(p.valor ?? 0), 0);
+      return {
+        leads: leadsCount.count ?? 0,
+        events: eventsCount.count ?? 0,
+        sales: purchasesRows.data?.length ?? 0,
+        revenue,
+      };
+    }),
+  );
+
+  const [eventsRes, purchasesRes, leadsRes, stagesRes, leadsTotalRes] = await Promise.all([
     supabase
       .from("events_log")
       .select("id, geo_country, geo_city")
@@ -18,24 +66,40 @@ export async function loadOverview(clientId: string) {
       .eq("client_id", clientId)
       .eq("status", "paid")
       .gte("created_at", since),
-    supabase.from("leads").select("id, stage_id").eq("client_id", clientId),
+    supabase
+      .from("leads")
+      .select(
+        "id, name, phone, avatar_url, stage_id, revenue, ctwa_clid, source_id, campaign_name, utm_source, created_at",
+      )
+      .eq("client_id", clientId)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(50),
     supabase
       .from("pipeline_stages")
       .select("id, name, position")
       .eq("client_id", clientId)
       .order("position"),
+    supabase.from("leads").select("id", { count: "exact", head: true }).eq("client_id", clientId),
   ]);
 
   const events = eventsRes.data ?? [];
   const purchases = purchasesRes.data ?? [];
   const leads = leadsRes.data ?? [];
   const stages = stagesRes.data ?? [];
+  const stageName = (stageId: string | null) => stages.find((s) => s.id === stageId)?.name ?? null;
 
-  const revenue30d = purchases.reduce((sum, p) => sum + Number(p.valor ?? 0), 0);
+  const revenuePeriod = purchases.reduce((sum, p) => sum + Number(p.valor ?? 0), 0);
 
-  const leadsByStage = stages.map((stage) => ({
-    name: stage.name,
-    count: leads.filter((l) => l.stage_id === stage.id).length,
+  const leadRows = leads.map((lead) => ({
+    id: lead.id as string,
+    name: (lead.name as string | null) ?? (lead.phone as string | null) ?? "Sem nome",
+    phone: lead.phone as string | null,
+    avatarUrl: lead.avatar_url as string | null,
+    stageName: stageName(lead.stage_id as string | null),
+    origin: originOf(lead),
+    createdAt: lead.created_at as string,
+    revenue: lead.revenue as number | null,
   }));
 
   const geoCounts = new Map<string, number>();
@@ -50,12 +114,15 @@ export async function loadOverview(clientId: string) {
     .map(([place, count]) => ({ place, count }));
 
   return {
-    events30d: events.length,
-    revenue30d,
-    purchases30d: purchases.length,
-    leadsByStage,
-    leadsTotal: leads.length,
+    periodDays,
+    eventsPeriod: events.length,
+    revenuePeriod,
+    purchasesPeriod: purchases.length,
+    leadsPeriod: leads.length,
+    leadsTotal: leadsTotalRes.count ?? 0,
+    leadRows,
     topGeo,
+    weekBuckets,
   };
 }
 

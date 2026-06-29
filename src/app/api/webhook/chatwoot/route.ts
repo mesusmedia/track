@@ -145,6 +145,10 @@ export async function POST(request: Request) {
     }
 
     const leadPhone = body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? null;
+    // foto de perfil do contato no WhatsApp -- o Chatwoot ja manda isso no
+    // payload (contact.thumbnail), sem precisar de chamada extra a API.
+    const avatarUrl =
+      body.contact?.thumbnail ?? body.conversation?.meta?.sender?.thumbnail ?? null;
 
     await supabase.from("leads").insert({
       client_id: settings.client_id,
@@ -152,6 +156,7 @@ export async function POST(request: Request) {
       stage_id: firstStage?.id ?? null,
       name: body.contact?.name ?? body.sender?.name ?? null,
       phone: leadPhone,
+      avatar_url: avatarUrl,
       trck_user_id: visitor?.trck_user_id ?? null,
       // a frase-marcador so identifica a ORIGEM (Google) -- sem campanha
       // resolvida (ex: sem app/script proprio), nao tem outro campo onde
