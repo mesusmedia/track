@@ -51,31 +51,47 @@ export async function POST(request: Request) {
     staging.source_id = adReply.sourceId;
     staging.ctwa_clid = adReply.ctwaClid ?? null;
     staging.origin = "meta";
-
-    const token = await getMetaAppToken();
-    if (token) {
-      const resolved = await resolveAdFromSourceId(adReply.sourceId, token);
-      if (resolved) {
-        staging.ad_id = resolved.adId;
-        staging.ad_name = resolved.adName;
-        staging.adset_name = resolved.adsetName;
-        staging.campaign_name = resolved.campaignName;
-        staging.account_name = resolved.accountName;
-      }
-    }
   } else if (matchesGoogleMarker(text)) {
     staging.origin = "google";
   } else {
     return NextResponse.json({ ignored: true });
   }
 
-  const { error } = await supabase.from("ad_attribution_staging").insert(staging);
+  // grava AGORA, antes de chamar a Graph API -- e o sinal minimo (source_id/
+  // ctwa_clid/origin) que o webhook do Chatwoot precisa pra nao descartar o
+  // lead. Resolver o nome da campanha pode demorar mais que o Chatwoot levar
+  // pra processar a mensagem; se isso acontecesse ANTES de gravar (jeito
+  // antigo), o lead inteiro era perdido, nao so a atribuicao -- visto em
+  // producao (lead "Ademir Pereira Moura" nunca chegou no CRM apesar do
+  // clique de anuncio real).
+  const { data: inserted, error } = await supabase
+    .from("ad_attribution_staging")
+    .insert(staging)
+    .select("id")
+    .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // corrida real: resolver o nome do anuncio via Graph API as vezes demora
-  // mais que o Chatwoot levar pra processar e criar o lead -- se o lead ja
-  // existe (sem atribuicao ainda), atualiza retroativamente em vez de deixar
-  // "Origem" em branco pra sempre.
+  if (adReply?.sourceId) {
+    const token = await getMetaAppToken();
+    if (token) {
+      const resolved = await resolveAdFromSourceId(adReply.sourceId, token);
+      if (resolved) {
+        const resolvedFields = {
+          ad_id: resolved.adId,
+          ad_name: resolved.adName,
+          adset_name: resolved.adsetName,
+          campaign_name: resolved.campaignName,
+          account_name: resolved.accountName,
+        };
+        await supabase.from("ad_attribution_staging").update(resolvedFields).eq("id", inserted.id);
+        Object.assign(staging, resolvedFields);
+      }
+    }
+  }
+
+  // corrida residual: o NOME da campanha (Graph API) ainda pode chegar
+  // depois do lead ja criado (sem source_id/ctwa_clid faltando mais, so o
+  // nome) -- atualiza retroativamente em vez de deixar "Origem" incompleta.
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   await supabase
     .from("leads")
