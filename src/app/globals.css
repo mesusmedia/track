@@ -126,6 +126,45 @@
   --sidebar-ring: 40 60% 58%;
 }
 
+/* tema ocaso -- meio-termo entre claro e escuro, bege/creme quente
+   (referencia: fundo claro do Claude). Mesma estrutura de variaveis do
+   claro/escuro, so a paleta muda. */
+.ocaso {
+  --background: 39 38% 92%;
+  --foreground: 25 25% 18%;
+  --card: 39 42% 95%;
+  --card-foreground: 25 25% 18%;
+  --popover: 39 42% 95%;
+  --popover-foreground: 25 25% 18%;
+  --primary: 142 50% 30%;
+  --primary-foreground: 39 42% 97%;
+  --secondary: 38 35% 87%;
+  --secondary-foreground: 25 25% 18%;
+  --muted: 38 35% 87%;
+  --muted-foreground: 25 18% 42%;
+  --accent: 36 38% 84%;
+  --accent-foreground: 25 25% 18%;
+  --destructive: 0 65% 48%;
+  --border: 35 28% 80%;
+  --input: 35 28% 80%;
+  --ring: 142 50% 30%;
+  --cyan: 192 70% 38%;
+  --amber: 38 80% 42%;
+  --chart-1: 142 50% 30%;
+  --chart-2: 192 70% 38%;
+  --chart-3: 38 80% 42%;
+  --chart-4: 262 50% 50%;
+  --chart-5: 0 55% 50%;
+  --sidebar: 38 40% 89%;
+  --sidebar-foreground: 25 25% 18%;
+  --sidebar-primary: 142 50% 30%;
+  --sidebar-primary-foreground: 39 42% 97%;
+  --sidebar-accent: 36 35% 83%;
+  --sidebar-accent-foreground: 25 25% 18%;
+  --sidebar-border: 35 28% 80%;
+  --sidebar-ring: 142 50% 30%;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
