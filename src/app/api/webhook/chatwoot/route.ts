@@ -79,6 +79,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ ignored: true, reason: "mensagem de sistema" });
     }
 
+    // dedup por telefone+nome nos ultimos 15 dias -- mesmo cliente clicando
+    // de novo num anuncio (ou conversa nova com o mesmo contato) dentro da
+    // janela nao conta como lead novo nem dispara evento "Lead" outra vez.
+    // So 1 captura por lead a cada 15 dias.
+    const dedupSince = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentDuplicate } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("client_id", settings.client_id)
+      .ilike("phone", `%${phoneDigits}%`)
+      .ilike("name", contactName)
+      .gte("created_at", dedupSince)
+      .limit(1)
+      .maybeSingle();
+    if (recentDuplicate) {
+      return NextResponse.json({ ignored: true, reason: "lead duplicado (mesmo telefone+nome, <15 dias)" });
+    }
+
     // primeira mensagem dessa conversa -- cria o lead na primeira etapa do funil
     const { data: firstStage } = await supabase
       .from("pipeline_stages")
