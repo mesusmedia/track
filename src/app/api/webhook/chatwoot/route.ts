@@ -54,6 +54,17 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!lead) {
+    // so cria lead a partir de mensagem real do cliente (incoming) -- o
+    // Chatwoot tambem dispara message_created pra eventos de "activity"
+    // (ex: "conversa atribuida ao agente X"), que costumam chegar ANTES da
+    // primeira mensagem de verdade. Sem esse filtro, o lead nascia com o
+    // nome do agente atribuido em vez do nome do cliente (visto em produção:
+    // varios leads de clientes/telefones diferentes todos com o mesmo nome
+    // de agente).
+    if (messageType !== "incoming") {
+      return NextResponse.json({ ignored: true, reason: "nao e mensagem incoming" });
+    }
+
     // filtra mensagens de sistema -- o proprio Evolution manda uma
     // notificacao de "instancia conectada"/config de webhook por um contato
     // fake chamado "EvolutionAPI" com numero curto (+123456), nao e lead de
@@ -122,9 +133,10 @@ export async function POST(request: Request) {
     // marcador "vim pelo site" digitada na primeira mensagem (cliques do
     // Google sem app/script proprio). Sem isso e conversa organica direta
     // (numero salvo, indicacao, etc) -- fora do escopo desse tracking.
+    const googleMarkerMatched = matchesGoogleMarker(content);
     const hasAttribution =
       Boolean(adData?.source_id || adData?.ctwa_clid || googleAdData?.campaignName || visitor) ||
-      matchesGoogleMarker(content);
+      googleMarkerMatched;
     if (!hasAttribution) {
       return NextResponse.json({ ignored: true, reason: "sem atribuicao de campanha" });
     }
@@ -136,7 +148,10 @@ export async function POST(request: Request) {
       name: body.contact?.name ?? body.sender?.name ?? null,
       phone: body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? null,
       trck_user_id: visitor?.trck_user_id ?? null,
-      utm_source: visitor?.utm_source ?? null,
+      // a frase-marcador so identifica a ORIGEM (Google) -- sem campanha
+      // resolvida (ex: sem app/script proprio), nao tem outro campo onde
+      // guardar isso. utm_source aqui e o que alimenta a coluna "Origem".
+      utm_source: visitor?.utm_source ?? (googleMarkerMatched ? "google" : null),
       utm_medium: visitor?.utm_medium ?? null,
       utm_campaign: visitor?.utm_campaign ?? null,
       source_id: adData?.source_id ?? null,
