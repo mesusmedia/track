@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,14 +54,48 @@ export function CrmBoard({
   leads: Lead[];
   rules: Rule[];
 }) {
+  // estado local otimista -- arrastar move o card na hora, sem esperar o
+  // round-trip do server action. Resincroniza quando o pai re-busca os
+  // dados (revalidatePath depois da action).
+  const [leadList, setLeadList] = useState(leads);
+  useEffect(() => setLeadList(leads), [leads]);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+
+  function handleDrop(stageId: string, leadId: string | undefined) {
+    setDragOverStage(null);
+    if (!leadId) return;
+    const lead = leadList.find((l) => l.id === leadId);
+    if (!lead || lead.stage_id === stageId) return;
+
+    setLeadList((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage_id: stageId } : l)));
+    moveLeadStage(leadId, stageId, clientId)
+      .then(() => toast.success("Etapa atualizada"))
+      .catch(() => {
+        setLeadList((prev) => prev.map((l) => (l.id === leadId ? lead : l)));
+        toast.error("Erro ao mover o lead");
+      });
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(220px, 1fr))` }}>
         {stages.map((stage) => (
-          <div key={stage.id} className="space-y-2">
+          <div
+            key={stage.id}
+            className={`space-y-2 rounded-lg p-1 transition-colors ${dragOverStage === stage.id ? "bg-accent" : ""}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOverStage(stage.id);
+            }}
+            onDragLeave={() => setDragOverStage((s) => (s === stage.id ? null : s))}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(stage.id, e.dataTransfer.getData("text/plain"));
+            }}
+          >
             <p className="text-sm font-medium">{stage.name}</p>
             <div className="space-y-2">
-              {leads
+              {leadList
                 .filter((l) => l.stage_id === stage.id)
                 .map((lead) => (
                   <LeadCard key={lead.id} clientId={clientId} lead={lead} stages={stages} />
@@ -87,7 +121,11 @@ function LeadCard({
   const [pending, startTransition] = useTransition();
 
   return (
-    <Card>
+    <Card
+      draggable
+      onDragStart={(e) => e.dataTransfer.setData("text/plain", lead.id)}
+      className="cursor-grab active:cursor-grabbing"
+    >
       <CardContent className="p-3 space-y-2">
         <p className="text-sm font-medium">{lead.name ?? "Sem nome"}</p>
         <p className="text-xs font-mono text-muted-foreground">{lead.phone ?? "-"}</p>
