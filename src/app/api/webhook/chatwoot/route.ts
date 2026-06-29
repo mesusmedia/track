@@ -4,6 +4,7 @@ import { isRateLimited } from "@/lib/rate-limit";
 import { findVisitorById, extractRefCode } from "@/lib/visitors";
 import { resolveAdFromGclid } from "@/lib/google-ads/client";
 import { maybeDispatchPurchaseForLead } from "@/lib/crm/dispatch-purchase";
+import { GOOGLE_MARKER } from "@/lib/ad-attribution";
 
 // ponytail: campos seguem o formato publicamente documentado do webhook
 // "message_created" do Chatwoot -- conferir com um payload real do Chatwoot
@@ -113,6 +114,19 @@ export async function POST(request: Request) {
           () => null,
         );
       }
+    }
+
+    // so registra no CRM conversa com atribuicao real de campanha -- Meta
+    // (ctwa_clid/source_id, capturado pelo webhook nativo do Evolution),
+    // Google resolvido via Ads API (gclid -> click_view), ou a frase-
+    // marcador "vim pelo site" digitada na primeira mensagem (cliques do
+    // Google sem app/script proprio). Sem isso e conversa organica direta
+    // (numero salvo, indicacao, etc) -- fora do escopo desse tracking.
+    const hasAttribution =
+      Boolean(adData?.source_id || adData?.ctwa_clid || googleAdData?.campaignName || visitor) ||
+      content.toLowerCase().includes(GOOGLE_MARKER);
+    if (!hasAttribution) {
+      return NextResponse.json({ ignored: true, reason: "sem atribuicao de campanha" });
     }
 
     await supabase.from("leads").insert({

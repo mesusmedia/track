@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { resolveAdFromSourceId } from "@/lib/meta/ads-insights";
 import { getMetaAppToken } from "@/lib/meta/token";
-
-const GOOGLE_MARKER = "vim pelo site";
+import { GOOGLE_MARKER } from "@/lib/ad-attribution";
 
 // webhook nativo do Evolution (messages.upsert) -- diferente do webhook do
 // Chatwoot (Fase 5/6): esse chega ANTES do Chatwoot processar a mensagem e
