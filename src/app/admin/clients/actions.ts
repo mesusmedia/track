@@ -66,3 +66,46 @@ export async function createClientAction(formData: FormData) {
   revalidatePath("/admin");
   return { client, tempPassword, email };
 }
+
+// pra clientes que ja existiam antes de ter login (ex: importados em lote
+// dos servidores reais de Evolution/Chatwoot) -- cria so o acesso, sem
+// duplicar client/settings/pipeline_stages. Suporta mais de 1 login por
+// cliente (ex: medica + secretaria), users_profile nao tem unique em
+// client_id.
+export async function createClientLoginAction(formData: FormData) {
+  const profile = await getProfile();
+  if (!profile || profile.role !== "agency_admin") {
+    throw new Error("Apenas admin da agência pode criar acesso");
+  }
+
+  const clientId = String(formData.get("client_id") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
+  if (!clientId || !email) throw new Error("E-mail é obrigatório");
+
+  const supabase = createServiceClient();
+  const { data: client, error: clientErr } = await supabase
+    .from("clients")
+    .select("id, agency_id")
+    .eq("id", clientId)
+    .single();
+  if (clientErr) throw clientErr;
+
+  const tempPassword = randomBytes(9).toString("base64url");
+  const { data: userRes, error: userErr } = await supabase.auth.admin.createUser({
+    email,
+    password: tempPassword,
+    email_confirm: true,
+  });
+  if (userErr) throw userErr;
+
+  const { error: profileErr } = await supabase.from("users_profile").insert({
+    id: userRes.user.id,
+    agency_id: client.agency_id,
+    role: "client",
+    client_id: client.id,
+  });
+  if (profileErr) throw profileErr;
+
+  revalidatePath(`/admin/clients/${clientId}/configuracoes`);
+  return { tempPassword, email };
+}
