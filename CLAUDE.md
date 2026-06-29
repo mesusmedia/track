@@ -270,6 +270,19 @@ npm run lint
   `source_id`; Google se `campaign_name`; senão `utm_source` cru; senão
   "Não identificada") — mesma função usada na coluna Origem da tabela.
 
+## Lead exige atribuição real de campanha (não é tracking de toda conversa)
+
+- `/api/webhook/chatwoot` só cria lead se a conversa tiver atribuição real:
+  Meta (`ctwa_clid`/`source_id` via `ad_attribution_staging`), Google
+  resolvido pela Ads API, visitante rastreado (`/api/go`) ou a frase-
+  marcador `"vim pelo site"` (`GOOGLE_MARKER`, agora em
+  `src/lib/ad-attribution.ts`, compartilhado com `/api/webhook/evolution`)
+  no texto da primeira mensagem. Sem isso, é conversa orgânica direta
+  (número salvo, indicação) — fora do escopo desse tracking, não cria lead.
+- Limpeza retroativa feita uma vez em 2026-06-28: 683 de 817 leads
+  acumulados antes desse filtro não tinham nenhuma atribuição (e nenhum
+  tinha `revenue` preenchido) — removidos. Ficaram 134 leads reais.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`
