@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rate-limit";
 import { findVisitorById, extractRefCode } from "@/lib/visitors";
 import { resolveAdFromGclid } from "@/lib/google-ads/client";
 import { maybeDispatchPurchaseForLead } from "@/lib/crm/dispatch-purchase";
 import { matchesGoogleMarker } from "@/lib/ad-attribution";
+import { dispatchEvent } from "@/lib/dispatch";
+import { hashPhone } from "@/lib/hash";
 
 // ponytail: campos seguem o formato publicamente documentado do webhook
 // "message_created" do Chatwoot -- conferir com um payload real do Chatwoot
@@ -141,12 +144,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ ignored: true, reason: "sem atribuicao de campanha" });
     }
 
+    const leadPhone = body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? null;
+
     await supabase.from("leads").insert({
       client_id: settings.client_id,
       conversation_external_id: conversationId,
       stage_id: firstStage?.id ?? null,
       name: body.contact?.name ?? body.sender?.name ?? null,
-      phone: body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? null,
+      phone: leadPhone,
       trck_user_id: visitor?.trck_user_id ?? null,
       // a frase-marcador so identifica a ORIGEM (Google) -- sem campanha
       // resolvida (ex: sem app/script proprio), nao tem outro campo onde
@@ -162,6 +167,33 @@ export async function POST(request: Request) {
       campaign_name: adData?.campaign_name ?? googleAdData?.campaignName ?? null,
       account_name: adData?.account_name ?? null,
     });
+
+    // dispara evento "Lead" pro Pixel/CAPI e GA4 do cliente, se tiverem
+    // cadastrados (dispatchEvent ja resolve isso e nao faz nada, sem erro,
+    // se o cliente nao tiver pixel/ga4 configurado). So o Purchase (no
+    // fechamento, ver dispatch-purchase.ts) disparava antes -- isso aqui
+    // cobre o evento de topo de funil, importante pra otimizacao de
+    // campanha no Ads Manager.
+    if (leadPhone) {
+      const eventId = randomUUID();
+      const result = await dispatchEvent({
+        clientId: settings.client_id,
+        eventName: "Lead",
+        eventId,
+        ip,
+        userAgent: request.headers.get("user-agent"),
+        visitor: { ctwa_clid: adData?.ctwa_clid ?? null },
+        phoneHash: hashPhone(leadPhone),
+      });
+      await supabase.from("events_log").insert({
+        client_id: settings.client_id,
+        event_name: "Lead",
+        event_id: eventId,
+        payload_meta: result.payloadMeta,
+        response_meta: result.responseMeta,
+      });
+    }
+
     return NextResponse.json({ lead: "created" });
   }
 
