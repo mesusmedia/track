@@ -1,18 +1,8 @@
 import { redirect } from "next/navigation";
-import { getProfile } from "@/lib/auth/profile";
-import { createClient } from "@/lib/supabase/server";
-import { loadIntegrationAccounts } from "@/lib/integrations/load";
-import { IntegrationSettings } from "@/components/integration-settings";
 
+// Configuracoes fica so com o admin da agencia (gerenciado em
+// /admin/clients/[id]/configuracoes) -- o layout de /cliente ja garante que
+// só usuario role "client" chega aqui, entao desativa a pagina pra todos.
 export default async function ClienteConfigPage() {
-  const profile = await getProfile();
-  if (!profile?.client_id) redirect("/cliente");
-
-  const supabase = await createClient();
-  const [{ data: client }, accounts] = await Promise.all([
-    supabase.from("clients").select("slug").eq("id", profile.client_id).single(),
-    loadIntegrationAccounts(profile.client_id),
-  ]);
-
-  return <IntegrationSettings clientId={profile.client_id} clientSlug={client!.slug} {...accounts} />;
+  redirect("/cliente");
 }

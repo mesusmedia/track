@@ -33,7 +33,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="ocaso"
           themes={["light", "ocaso", "dark"]}
           enableSystem={false}
           disableTransitionOnChange
