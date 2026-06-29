@@ -47,18 +47,39 @@ export async function testMetaPixelConnection(
   if (!(await canAccess(clientId))) return { ok: false, message: "Sem acesso" };
 
   const supabase = createServiceClient();
-  const { data } = await supabase
-    .from("meta_pixels")
-    .select("pixel_id, capi_token_enc")
-    .eq("id", accountId)
-    .single();
+  const [{ data }, { data: settings }] = await Promise.all([
+    supabase.from("meta_pixels").select("pixel_id, capi_token_enc").eq("id", accountId).single(),
+    supabase.from("settings").select("test_event_code").eq("client_id", clientId).maybeSingle(),
+  ]);
   if (!data) return { ok: false, message: "Conta não encontrada" };
 
   const token = decryptSecret(byteaToBuffer(data.capi_token_enc));
-  const res = await fetch(`${META_GRAPH_API_BASE}/${data.pixel_id}?fields=id&access_token=${token}`);
+  // ponytail: nao usa GET /{pixel_id}?fields=id -- token gerado pela tela
+  // "API de Conversões" do Gerenciador de Eventos costuma ser escopado SO
+  // pra enviar evento (POST .../events), sem permissao de leitura no objeto
+  // pixel. Testar enviando um evento de teste (test_event_code, se a
+  // agencia ja tiver cadastrado em "Configuracoes" -> sem isso o evento
+  // ainda vai, so nao some sozinho da aba "Eventos de teste" do Meta) e o
+  // jeito que reflete o uso real, sem dar falso "Missing Permission".
+  const res = await fetch(`${META_GRAPH_API_BASE}/${data.pixel_id}/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      access_token: token,
+      ...(settings?.test_event_code ? { test_event_code: settings.test_event_code } : {}),
+      data: [
+        {
+          event_name: "TestConnection",
+          event_time: Math.floor(Date.now() / 1000),
+          action_source: "system_generated",
+          user_data: { client_ip_address: "127.0.0.1", client_user_agent: "mesus-track-test" },
+        },
+      ],
+    }),
+  });
   const body = await res.json();
   if (body.error) return { ok: false, message: body.error.message };
-  return { ok: true, message: "Conexão válida" };
+  return { ok: true, message: "Conexão válida (evento de teste enviado)" };
 }
 
 export async function testMetaAdAccountConnection(
