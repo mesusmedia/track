@@ -283,6 +283,24 @@ npm run lint
   acumulados antes desse filtro não tinham nenhuma atribuição (e nenhum
   tinha `revenue` preenchido) — removidos. Ficaram 134 leads reais.
 
+## Disparo de evento Lead (alem do Purchase)
+
+- Antes so existia disparo automatico de **Purchase** (`dispatch-purchase.ts`,
+  quando o lead vai pra etapa "Vendido" com `revenue` preenchido). Agora
+  `/api/webhook/chatwoot` tambem dispara **Lead** (Meta CAPI + GA4) no
+  momento em que o lead e criado (so quando passa o filtro de atribuicao
+  real de campanha, ver seção acima) -- sem dedup column dedicada porque so
+  roda dentro do branch `if (!lead)`, ou seja, no maximo uma vez por
+  conversa.
+- **Pre-requisito por cliente**: `meta_pixels` (Pixel ID + token CAPI) e/ou
+  `ga4_accounts` (Measurement ID + API secret) cadastrados em
+  `/admin/clients/[id]/configuracoes`. Sem isso, `dispatchEvent` simplesmente
+  nao dispara nada pro cliente (array vazio, sem erro) -- nao bloqueia a
+  criacao do lead.
+- Meta Ads (ad account) e Google Ads (MCC) **nao tem relacao** com esse
+  disparo de evento -- servem so pra atribuicao/reporting (qual anuncio
+  gerou o clique), nunca pra enviar evento.
+
 ## Versões de API externas (constantes únicas, fáceis de atualizar)
 
 - Meta Graph API (CAPI): constante a definir em `src/lib/meta/constants.ts`
