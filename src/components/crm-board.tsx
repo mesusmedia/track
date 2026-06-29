@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,11 +119,19 @@ function LeadCard({
   stages: Stage[];
 }) {
   const [pending, startTransition] = useTransition();
+  const cardRef = useRef<HTMLDivElement>(null);
 
   return (
     <Card
+      ref={cardRef}
       draggable
-      onDragStart={(e) => e.dataTransfer.setData("text/plain", lead.id)}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", lead.id);
+        // forca o navegador a usar so esse card como imagem de arrasto --
+        // sem isso, o preview "fantasma" as vezes captura a coluna inteira
+        // (bug visual do drag nativo do browser em grid/flex).
+        if (cardRef.current) e.dataTransfer.setDragImage(cardRef.current, 20, 20);
+      }}
       className="cursor-grab active:cursor-grabbing select-none"
     >
       <CardContent className="p-3 space-y-2">
