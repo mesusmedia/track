@@ -82,7 +82,7 @@ export function CrmBoard({
         {stages.map((stage) => (
           <div
             key={stage.id}
-            className={`space-y-2 rounded-lg p-1 transition-colors ${dragOverStage === stage.id ? "bg-accent" : ""}`}
+            className={`space-y-2 rounded-lg p-1 select-none transition-colors ${dragOverStage === stage.id ? "bg-accent" : ""}`}
             onDragOver={(e) => {
               e.preventDefault();
               setDragOverStage(stage.id);
@@ -124,7 +124,7 @@ function LeadCard({
     <Card
       draggable
       onDragStart={(e) => e.dataTransfer.setData("text/plain", lead.id)}
-      className="cursor-grab active:cursor-grabbing"
+      className="cursor-grab active:cursor-grabbing select-none"
     >
       <CardContent className="p-3 space-y-2">
         <p className="text-sm font-medium">{lead.name ?? "Sem nome"}</p>
