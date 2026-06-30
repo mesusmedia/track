@@ -72,7 +72,11 @@ export async function POST(request: Request) {
     // notificacao de "instancia conectada"/config de webhook por um contato
     // fake chamado "EvolutionAPI" com numero curto (+123456), nao e lead de
     // verdade. Mesmo filtro que o n8n antigo fazia.
-    const contactName = String(body.contact?.name ?? body.sender?.name ?? "").trim();
+    // meta.sender é sempre o contato da conversa (nunca o agente) --
+    // body.sender pode ser o agente em alguns eventos mesmo com message_type incoming
+    const contactName = String(
+      body.conversation?.meta?.sender?.name ?? body.contact?.name ?? body.sender?.name ?? "",
+    ).trim();
     const rawPhone = String(body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? "");
     const phoneDigits = rawPhone.replace(/\D/g, "");
     if (contactName.toLowerCase() === "evolutionapi" || phoneDigits.length < 8) {
@@ -172,7 +176,7 @@ export async function POST(request: Request) {
       client_id: settings.client_id,
       conversation_external_id: conversationId,
       stage_id: firstStage?.id ?? null,
-      name: body.contact?.name ?? body.sender?.name ?? null,
+      name: body.conversation?.meta?.sender?.name ?? body.contact?.name ?? body.sender?.name ?? null,
       phone: leadPhone,
       avatar_url: avatarUrl,
       trck_user_id: visitor?.trck_user_id ?? null,
