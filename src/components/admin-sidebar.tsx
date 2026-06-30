@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users2 } from "lucide-react";
+import { LayoutDashboard, Users2, UserCog } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Visão geral", icon: LayoutDashboard },
   { href: "/admin/clients", label: "Clientes", icon: Users2 },
+  { href: "/admin/equipe", label: "Equipe", icon: UserCog },
 ];
 
 export function AdminSidebar({ email }: { email: string | null }) {

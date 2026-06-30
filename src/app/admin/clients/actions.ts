@@ -109,3 +109,34 @@ export async function createClientLoginAction(formData: FormData) {
   revalidatePath(`/admin/clients/${clientId}/configuracoes`);
   return { tempPassword, email };
 }
+
+export async function createAdminUserAction(formData: FormData) {
+  const profile = await getProfile();
+  if (!profile || profile.role !== "agency_admin") {
+    throw new Error("Apenas admin da agência pode criar usuários admin");
+  }
+
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) throw new Error("E-mail é obrigatório");
+
+  const supabase = createServiceClient();
+  const tempPassword = randomBytes(9).toString("base64url");
+
+  const { data: userRes, error: userErr } = await supabase.auth.admin.createUser({
+    email,
+    password: tempPassword,
+    email_confirm: true,
+  });
+  if (userErr) throw userErr;
+
+  const { error: profileErr } = await supabase.from("users_profile").insert({
+    id: userRes.user.id,
+    agency_id: profile.agency_id,
+    role: "agency_admin",
+    client_id: null,
+  });
+  if (profileErr) throw profileErr;
+
+  revalidatePath("/admin/equipe");
+  return { tempPassword, email };
+}
