@@ -132,6 +132,21 @@ export function IntegrationSettings({
                 {`<a href="https://wa.me/SEUNUMERO" data-campaign="Lancamento-Junho" data-content="Video-2">`}
               </code>
             </div>
+            <div className="space-y-3 max-w-xl rounded-lg border border-dashed border-orange-400/40 bg-orange-50/50 dark:bg-orange-950/20 p-4">
+              <p className="text-sm font-medium">🎯 Anúncio direto no WhatsApp (sem landing page)</p>
+              <p className="text-xs text-muted-foreground">
+                Use esta URL como <strong>URL final</strong> no Google Ads quando o anúncio manda direto pro WhatsApp (sem passar por uma página). O <code>{"{gclid}"}</code> é preenchido automaticamente pelo Google no clique.
+              </p>
+              <Input
+                readOnly
+                value={`https://track.mesusmedia.com.br/api/go/${clientSlug}?gclid={gclid}`}
+                className="font-mono text-xs bg-background"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <p className="text-xs text-muted-foreground">
+                Para Meta Ads, use <code>fbclid={"{fbclid}"}</code> no lugar de <code>gclid</code>.
+              </p>
+            </div>
             <form action={updateTestEventCode} className="space-y-2 max-w-sm">
               <input type="hidden" name="client_id" value={clientId} />
               <Label htmlFor="test_event_code">Test Event Code (Meta Events Manager)</Label>
