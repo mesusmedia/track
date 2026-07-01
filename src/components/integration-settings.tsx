@@ -119,7 +119,7 @@ export function IntegrationSettings({
               </ol>
               <Input
                 readOnly
-                value={`<script src="https://${process.env.NEXT_PUBLIC_TRACK_DOMAIN}/api/tag/${clientSlug}" async></script>`}
+                value={`<script src="${process.env.NEXT_PUBLIC_TRACK_DOMAIN}/api/tag/${clientSlug}" async></script>`}
                 className="font-mono text-xs bg-background"
                 onClick={(e) => e.currentTarget.select()}
               />
