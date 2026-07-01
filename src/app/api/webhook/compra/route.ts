@@ -15,7 +15,7 @@ const APPROVED_STATUSES = new Set([
 ]);
 
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "unknown";
   if (isRateLimited(`webhook:${ip}`)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
@@ -92,13 +92,18 @@ export async function POST(request: Request) {
         fbc: visitor?.fbc ?? null,
         match_method: matchMethod,
         meta_event_id: metaEventId,
-        webhook_raw: rawBody,
+        // ponytail: webhook_raw removido — payloads de plataformas de pagamento
+        // contêm PII (CPF, endereço, dados bancários). Dados normalizados já
+        // estão nos outros campos.
       },
       { onConflict: "client_id,transaction_id" },
     )
     .select("id")
     .single();
-  if (upsertErr) return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+  if (upsertErr) {
+    console.error("[webhook/compra] upsert error:", upsertErr.message);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+  }
 
   if (!isApproved || alreadyDispatched) {
     return NextResponse.json({ transaction_id: purchase.transactionId, dispatched: false });

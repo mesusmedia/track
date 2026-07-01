@@ -4,7 +4,7 @@ import { isRateLimited } from "@/lib/rate-limit";
 import { hashPii, hashPhone } from "@/lib/hash";
 
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "unknown";
   if (isRateLimited(`identify:${ip}`)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }

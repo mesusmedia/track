@@ -87,6 +87,7 @@ export async function createClientLoginAction(formData: FormData) {
     .from("clients")
     .select("id, agency_id")
     .eq("id", clientId)
+    .eq("agency_id", profile.agency_id)
     .single();
   if (clientErr) throw clientErr;
 

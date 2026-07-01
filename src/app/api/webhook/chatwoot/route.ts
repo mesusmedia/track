@@ -13,7 +13,7 @@ import { hashPhone } from "@/lib/hash";
 // "message_created" do Chatwoot -- conferir com um payload real do Chatwoot
 // hospedado pela agencia antes de depender disso em produção.
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "unknown";
   if (isRateLimited(`webhook:${ip}`)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }

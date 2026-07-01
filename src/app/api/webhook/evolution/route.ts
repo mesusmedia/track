@@ -10,9 +10,13 @@ import { matchesGoogleMarker } from "@/lib/ad-attribution";
 // ctwaClid), que o Chatwoot normaliza e descarta. So a primeira mensagem de
 // cada conversa importa -- o resto e ignorado (dedup fica por conta do lead
 // ja existir quando o Chatwoot processar).
-// ponytail: sem rate-limit aqui (fonte confiavel, servidor proprio da
-// agencia, volume de todas as 33 instancias passa por um IP so).
 export async function POST(request: Request) {
+  // C1: verifica secret enviado pelo Evolution no header
+  const secret = request.headers.get("x-evolution-webhook-secret");
+  if (!secret || secret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   const body = await request.json().catch(() => null);
   if (!body || body.event !== "messages.upsert") return NextResponse.json({ ignored: true });
   if (body.data?.key?.fromMe) return NextResponse.json({ ignored: true });

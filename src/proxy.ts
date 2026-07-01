@@ -31,7 +31,18 @@ export async function proxy(request: NextRequest) {
   );
 
   // refresca a sessao (necessario em Server Components)
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const isProtected = pathname.startsWith("/admin") || pathname === "/";
+  const isAuthRoute = pathname.startsWith("/login");
+
+  if (!user && isProtected) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  if (user && isAuthRoute) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
 
   return response;
 }

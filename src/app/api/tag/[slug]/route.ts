@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 // ponytail: pixel_id e measurement_id sao publicos por natureza (vao no
 // HTML/network tab de qualquer site que usa Meta Pixel ou GA4) -- por isso
 // essa rota nao exige auth, so devolve JS.
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const supabase = createServiceClient();
+  const supabase = await createClient();
 
   const { data: client } = await supabase.from("clients").select("id").eq("slug", slug).maybeSingle();
   if (!client) return new NextResponse("// cliente não encontrado", { status: 404 });
