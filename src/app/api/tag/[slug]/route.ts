@@ -110,7 +110,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       if (gclid) params.set("gclid", gclid);
       if (fbclid) params.set("fbclid", fbclid);
       var qs = params.toString();
-      a.href = "/api/go/" + CLIENT_SLUG + (qs ? "?" + qs : "");
+      a.href = "https://track.mesusmedia.com.br/api/go/" + CLIENT_SLUG + (qs ? "?" + qs : "");
     });
   }
   if (document.readyState === "loading") {
