@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rate-limit";
+
 import { hashPii, hashPhone } from "@/lib/hash";
 import { normalizePurchase } from "@/lib/webhooks/normalize";
 import { dispatchEvent } from "@/lib/dispatch";
 import { findVisitorById, findVisitorByHash } from "@/lib/visitors";
+
 
 const APPROVED_STATUSES = new Set([
   "approved",

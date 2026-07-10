@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 // ponytail: pixel_id e measurement_id sao publicos por natureza (vao no
 // HTML/network tab de qualquer site que usa Meta Pixel ou GA4) -- por isso
-// essa rota nao exige auth, so devolve JS.
+// essa rota nao exige auth, so devolve JS. usa service client pois a rota
+// e publica (sem sessao) e RLS bloquearia a leitura com anon key.
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: client } = await supabase.from("clients").select("id").eq("slug", slug).maybeSingle();
   if (!client) return new NextResponse("// cliente não encontrado", { status: 404 });
@@ -76,7 +77,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
 
   if (fbclid || gclid || utmSource) {
     var fbc = fbclid ? "fb.1." + Date.now() + "." + fbclid : getCookie("_fbc");
-    fetch("/api/identify", {
+    fetch("https://track.mesusmedia.com.br/api/identify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -104,7 +105,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     links.forEach(function (a) {
       if (a.dataset.mesusRewritten) return;
       a.dataset.mesusRewritten = "1";
+      // preserva o texto pre-preenchido configurado na pagina
+      var originalText = new URL(a.href, location.href).searchParams.get("text");
       var params = new URLSearchParams();
+      if (originalText) params.set("text", originalText);
       if (a.dataset.campaign) params.set("utm_campaign", a.dataset.campaign);
       if (a.dataset.content) params.set("utm_content", a.dataset.content);
       if (gclid) params.set("gclid", gclid);
@@ -125,7 +129,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     var eventId = uuid();
     if (PIXEL_IDS.length) fbq("track", eventName, customData || {}, { eventID: eventId });
     if (MEASUREMENT_IDS.length) gtag("event", eventName, customData || {});
-    fetch("/api/event", {
+    fetch("https://track.mesusmedia.com.br/api/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

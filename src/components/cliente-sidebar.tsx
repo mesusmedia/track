@@ -3,14 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, KanbanSquare, Activity, Wallet, Megaphone } from "lucide-react";
+import { LayoutDashboard, KanbanSquare, Wallet, Megaphone } from "lucide-react";
 
 // Configurações fica so com o admin da agencia -- ver
 // src/app/cliente/configuracoes/page.tsx (bloqueia acesso direto por URL).
+// Eventos removido: dado técnico irrelevante para o cliente final.
 const NAV = [
   { href: "/cliente", label: "Visão geral", icon: LayoutDashboard },
   { href: "/cliente/crm", label: "CRM", icon: KanbanSquare },
-  { href: "/cliente/eventos", label: "Eventos", icon: Activity },
   { href: "/cliente/faturamento", label: "Faturamento", icon: Wallet },
   { href: "/cliente/campanhas", label: "Campanhas", icon: Megaphone },
 ];

@@ -71,9 +71,17 @@ npm run lint
 
 ## CRM kanban (Fase 5)
 
-- `pipeline_stages`/`leads`/`automation_rules`, todas por `client_id`. 5 estágios
-  padrão (Novo, Em atendimento, Agendado, Vendido, Perdido) semeados na criação
-  do cliente (`src/app/admin/clients/actions.ts`).
+- `pipeline_stages`/`leads`/`automation_rules`, todas por `client_id`. 7 estágios
+  padrão (Novo, Em atendimento, Agendado, **Compareceu**, **Orçamento em aberto**,
+  Vendido, Perdido) semeados na criação do cliente (`src/app/admin/clients/actions.ts`).
+  Migration `20260703150000_pipeline_stages_compareceu.sql` inseriu as 2 novas etapas
+  em todos os clientes existentes (posição relativa ao "Agendado", via subquery).
+- `leads.notes text` — campo livre por lead (observação interna da equipe), salvo
+  via `updateLeadNotes` em `src/lib/crm/actions.ts`. Migration `20260703130000_lead_notes.sql`.
+  **Gotcha de deploy**: código que faz SELECT na coluna deve ir ao ar DEPOIS da
+  migration rodar no banco de produção — caso contrário a query falha silenciosamente
+  e retorna `[]` (incidente real: todos os leads sumiram do CRM até a migration ser
+  aplicada manualmente).
 - `/api/webhook/chatwoot?token=...` (mesmo `webhook_token` do webhook de
   compra) — evento `message_created`: primeira mensagem da conversa cria o
   lead na 1ª etapa e tenta linkar `trck_user_id` pelo ref code de 8 chars
@@ -227,6 +235,13 @@ npm run lint
   `src/components/integration-settings.tsx` — funciona hoje, sem depender da
   aprovação da API; o `gclid` automático + nome de campanha pela API é o
   upgrade incremental, não bloqueia nada.
+- **Fix de atribuição Google via ref code** (`/api/go/[slug]`): ao criar o
+  visitor, injeta `(ref:XXXXXXXX)` (8 chars do UUID) no texto pré-preenchido
+  do WhatsApp antes de redirecionar. Quando o Chatwoot webhook processa a
+  primeira mensagem, `extractRefCode` encontra o ref, `findVisitorById` resolve
+  o visitor (que tem `gclid` + UTMs), e a atribuição fica completa sem depender
+  de janela de tempo nem da Google Ads API. `utm_source` cai como "google" se o
+  visitor tem `gclid` mas sem UTMs explícitas na URL do anúncio.
 
 ## Qualidade do lead capturado (filtros pós-incidente)
 
@@ -259,6 +274,14 @@ npm run lint
   Chatwoot se isso for suspeitado de novo (lead "que devia ter chegado e não
   chegou" em qualquer cliente é o sintoma).
 
+## Visão geral (admin) — erros CAPI
+
+- Card lateral "Erros CAPI (24h)" em `/admin` (`src/app/admin/page.tsx`): query
+  em `events_log` das últimas 24h, filtra client-side por `response_meta[].ok === false`,
+  agrupa por cliente, mostra nome, evento, contagem e horário do último erro.
+  Não aparece se não houver erros. Sem cron — carrega sempre fresco na abertura
+  da página.
+
 ## Visão geral (admin) — filtro de período e origem
 
 - Seletor de período (7/30/90 dias, `src/components/period-filter.tsx`,
@@ -283,6 +306,17 @@ npm run lint
   acumulados antes desse filtro não tinham nenhuma atribuição (e nenhum
   tinha `revenue` preenchido) — removidos. Ficaram 134 leads reais.
 
+## Métricas do CRM (CrmStats)
+
+- Contagem **cumulativa**: lead conta em todas as etapas que já passou. Ex: quem
+  está em "Vendido" conta em Agendado, Compareceu e Vendido — reflete o funil real.
+- 5 cards: Leads totais, Taxa de agendamento (≥ Agendado / ativos), Taxa de
+  comparecimento (≥ Compareceu / agendados), Taxa de conversão (Vendido /
+  comparecidos), Receita atribuída.
+- `src/components/crm-stats.tsx` — lógica por `stagePos` (mapa `stage_id → position`),
+  sem dependência de nome de etapa exceto para achar "agendado"/"compareceu"/"vendido"
+  via `findStage()` (substring case-insensitive).
+
 ## Disparo de evento Lead (alem do Purchase)
 
 - Antes so existia disparo automatico de **Purchase** (`dispatch-purchase.ts`,
@@ -297,6 +331,15 @@ npm run lint
   `/admin/clients/[id]/configuracoes`. Sem isso, `dispatchEvent` simplesmente
   nao dispara nada pro cliente (array vazio, sem erro) -- nao bloqueia a
   criacao do lead.
+- **WABA ID e fallback de action_source** (`settings.meta_waba_id`,
+  migration `20260703140000_meta_waba_id.sql`): evento Lead WhatsApp exige
+  `whatsapp_business_account_id` no payload quando `action_source = business_messaging`
+  (erro 2804116 sem ele). Lógica em `src/lib/dispatch.ts`:
+  - Com `meta_waba_id` cadastrado → `business_messaging` + `LeadSubmitted` (correto)
+  - Sem `meta_waba_id` → fallback para `website` + `Lead` mas mantém `ctwa_clid`
+    → atribuição ao anúncio preservada, zero erro. O WABA ID fica em
+    Configurações → Geral → "WhatsApp Business Account ID (WABA)".
+  - `Purchase` sempre vai como `website`, nunca precisa de WABA ID.
 - Meta Ads (ad account) e Google Ads (MCC) **nao tem relacao** com esse
   disparo de evento -- servem so pra atribuicao/reporting (qual anuncio
   gerou o clique), nunca pra enviar evento.

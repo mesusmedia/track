@@ -29,7 +29,7 @@ export async function dispatchEvent(params: {
   const [settingsRes, pixelsRes, ga4Res] = await Promise.all([
     supabase
       .from("settings")
-      .select("test_event_code")
+      .select("test_event_code, meta_waba_id")
       .eq("client_id", params.clientId)
       .maybeSingle(),
     supabase
@@ -56,15 +56,23 @@ export async function dispatchEvent(params: {
   const metaResults = await Promise.all(
     (pixelsRes.data ?? []).map(async (pixel) => {
       const token = decryptSecret(byteaToBuffer(pixel.capi_token_enc));
+      const isWhatsApp = !!params.visitor?.ctwa_clid;
+      const wabaId = settingsRes.data?.meta_waba_id ?? null;
+      // business_messaging exige waba_id ou page_id (error 2804116 sem eles).
+      // Fallback: se nao tem waba_id, envia como "website" com ctwa_clid --
+      // a atribuicao ao anuncio e preservada via ctwa_clid de qualquer jeito.
+      const useBusinessMessaging = isWhatsApp && params.eventName !== "Purchase" && !!wabaId;
+      const metaActionSource = useBusinessMessaging ? "business_messaging" : "website";
+      const metaEventName = useBusinessMessaging && params.eventName === "Lead" ? "LeadSubmitted" : params.eventName;
       const result = await sendMetaCapiEvent({
         pixelId: pixel.pixel_id,
         accessToken: token,
         testEventCode: settingsRes.data?.test_event_code,
-        eventName: params.eventName,
+        eventName: metaEventName,
         eventId: params.eventId,
         eventTime,
         eventSourceUrl: params.visitor?.referrer,
-        actionSource: params.visitor?.ctwa_clid ? "business_messaging" : "website",
+        actionSource: metaActionSource,
         userData: {
           emailHash: params.emailHash ?? params.visitor?.email_hash,
           phoneHash: params.phoneHash ?? params.visitor?.phone_hash,
@@ -72,6 +80,7 @@ export async function dispatchEvent(params: {
           fbp: params.visitor?.fbp,
           fbc: params.visitor?.fbc,
           ctwaClid: params.visitor?.ctwa_clid,
+          wabaId: useBusinessMessaging ? wabaId : null,
           clientIp: params.ip,
           clientUserAgent: params.userAgent,
         },

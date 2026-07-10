@@ -41,7 +41,7 @@ export async function createClientAction(formData: FormData) {
   if (settingsErr) throw settingsErr;
   void settings;
 
-  const defaultStages = ["Novo", "Em atendimento", "Agendado", "Vendido", "Perdido"];
+  const defaultStages = ["Novo", "Em atendimento", "Agendado", "Compareceu", "Orçamento em aberto", "Vendido", "Perdido"];
   const { error: stagesErr } = await supabase.from("pipeline_stages").insert(
     defaultStages.map((name, position) => ({ client_id: client.id, name, position })),
   );
@@ -109,6 +109,61 @@ export async function createClientLoginAction(formData: FormData) {
 
   revalidatePath(`/admin/clients/${clientId}/configuracoes`);
   return { tempPassword, email };
+}
+
+export async function resetUserPasswordAction(formData: FormData) {
+  const profile = await getProfile();
+  if (!profile || profile.role !== "agency_admin") {
+    throw new Error("Apenas admin da agência pode resetar senhas");
+  }
+
+  const userId = String(formData.get("user_id") ?? "").trim();
+  if (!userId) throw new Error("user_id é obrigatório");
+
+  const supabase = createServiceClient();
+
+  // garante que o usuário pertence à mesma agência
+  const { data: targetProfile } = await supabase
+    .from("users_profile")
+    .select("id")
+    .eq("id", userId)
+    .eq("agency_id", profile.agency_id)
+    .maybeSingle();
+  if (!targetProfile) throw new Error("Usuário não encontrado");
+
+  const tempPassword = randomBytes(9).toString("base64url");
+  const { error } = await supabase.auth.admin.updateUserById(userId, { password: tempPassword });
+  if (error) throw error;
+
+  return { tempPassword };
+}
+
+export async function deleteUserAction(formData: FormData) {
+  const profile = await getProfile();
+  if (!profile || profile.role !== "agency_admin") {
+    throw new Error("Apenas admin da agência pode excluir usuários");
+  }
+
+  const userId = String(formData.get("user_id") ?? "").trim();
+  if (!userId) throw new Error("user_id é obrigatório");
+  if (userId === profile.id) throw new Error("Você não pode excluir seu próprio usuário");
+
+  const supabase = createServiceClient();
+
+  // garante que o usuário pertence à mesma agência
+  const { data: targetProfile } = await supabase
+    .from("users_profile")
+    .select("id")
+    .eq("id", userId)
+    .eq("agency_id", profile.agency_id)
+    .maybeSingle();
+  if (!targetProfile) throw new Error("Usuário não encontrado");
+
+  const { error } = await supabase.auth.admin.deleteUser(userId);
+  if (error) throw error;
+
+  revalidatePath("/admin/equipe");
+  revalidatePath("/admin/clients");
 }
 
 export async function createAdminUserAction(formData: FormData) {

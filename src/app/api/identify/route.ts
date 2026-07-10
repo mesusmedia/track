@@ -3,6 +3,16 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rate-limit";
 import { hashPii, hashPhone } from "@/lib/hash";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS });
+}
+
 export async function POST(request: Request) {
   const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "unknown";
   if (isRateLimited(`identify:${ip}`)) {
@@ -57,8 +67,8 @@ export async function POST(request: Request) {
         { ...visitorData, trck_user_id: body.trck_user_id, updated_at: new Date().toISOString() },
         { onConflict: "trck_user_id" },
       );
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ trck_user_id: body.trck_user_id });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: CORS });
+    return NextResponse.json({ trck_user_id: body.trck_user_id }, { headers: CORS });
   }
 
   const { data: visitor, error } = await supabase
@@ -66,7 +76,7 @@ export async function POST(request: Request) {
     .insert(visitorData)
     .select("trck_user_id")
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: CORS });
 
-  return NextResponse.json({ trck_user_id: visitor.trck_user_id });
+  return NextResponse.json({ trck_user_id: visitor.trck_user_id }, { headers: CORS });
 }

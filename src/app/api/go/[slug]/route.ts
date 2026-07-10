@@ -54,13 +54,16 @@ export async function GET(
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // ponytail: passa um codigo de referencia (8 primeiros chars do
-  // trck_user_id) na mensagem prefilled; o webhook do WhatsApp (Fase 5/6)
-  // le esse codigo na primeira mensagem pra linkar o lead ao visitante.
-  // Upgrade futuro: usar o ctwa_clid nativo do Meta quando disponivel.
-  const ref = visitor.trck_user_id.slice(0, 8);
-  const text = encodeURIComponent(`(ref:${ref})`);
-  const waUrl = `https://wa.me/${settings.whatsapp_number}?text=${text}`;
+  // injeta (ref:XXXXXXXX) no texto pra o webhook Chatwoot conseguir ligar
+  // a mensagem ao visitor (que tem gclid/utm) sem depender de janela de tempo.
+  const refSuffix = visitor?.trck_user_id
+    ? ` (ref:${visitor.trck_user_id.slice(0, 8)})`
+    : "";
+  const baseText = url.searchParams.get("text") ?? "";
+  const waText = (baseText + refSuffix).trim() || null;
+  const waUrl = waText
+    ? `https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent(waText)}`
+    : `https://wa.me/${settings.whatsapp_number}`;
 
   return NextResponse.redirect(waUrl, 302);
 }

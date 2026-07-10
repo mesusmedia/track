@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth/profile";
 import { createAdminUserAction } from "@/app/admin/clients/actions";
 import { Users2 } from "lucide-react";
 import { NewAdminUserForm } from "./new-admin-user-form";
+import { UserManageActions } from "@/components/user-manage-actions";
 
 export default async function AdminEquipePage() {
   const profile = await getProfile();
@@ -51,9 +52,10 @@ export default async function AdminEquipePage() {
                     desde {new Date(u.createdAt).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
-                <span className="ml-auto text-[10px] font-bold text-primary uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-primary uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-full">
                   Admin
                 </span>
+                <UserManageActions userId={u.id} />
               </li>
             ))}
           </ul>

@@ -1,7 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 
-export async function loadCrmData(clientId: string) {
+export async function loadCrmData(clientId: string, from?: string, to?: string) {
   const supabase = await createClient();
+
+  let leadsQuery = supabase
+    .from("leads")
+    .select("id, name, phone, stage_id, revenue, utm_source, campaign_name, adset_name, ad_name, notes, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  if (from) leadsQuery = leadsQuery.gte("created_at", from);
+  if (to) leadsQuery = leadsQuery.lte("created_at", to);
 
   const [stages, leads, rules] = await Promise.all([
     supabase
@@ -9,11 +17,7 @@ export async function loadCrmData(clientId: string) {
       .select("id, name, position")
       .eq("client_id", clientId)
       .order("position", { ascending: true }),
-    supabase
-      .from("leads")
-      .select("id, name, phone, stage_id, revenue, utm_source, campaign_name, adset_name, ad_name")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: false }),
+    leadsQuery,
     supabase
       .from("automation_rules")
       .select("id, keyword, stage_id")

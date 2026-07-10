@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,11 +21,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
 import {
   moveLeadStage,
   updateLeadRevenue,
+  updateLeadNotes,
   addAutomationRule,
   removeAutomationRule,
 } from "@/lib/crm/actions";
@@ -40,20 +42,61 @@ type Lead = {
   campaign_name: string | null;
   adset_name: string | null;
   ad_name: string | null;
+  notes: string | null;
+  created_at?: string | null;
 };
 type Rule = { id: string; keyword: string; stage_id: string };
+
+function periodPresets() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const today = now.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return [
+    { label: "Este mês", from: `${y}-${pad(m + 1)}-01`, to: today },
+    {
+      label: "Mês passado",
+      from: `${m === 0 ? y - 1 : y}-${pad(m === 0 ? 12 : m)}-01`,
+      to: `${m === 0 ? y - 1 : y}-${pad(m === 0 ? 12 : m)}-${new Date(y, m, 0).getDate()}`,
+    },
+    {
+      label: "Últimos 7 dias",
+      from: new Date(now.getTime() - 6 * 864e5).toISOString().slice(0, 10),
+      to: today,
+    },
+    {
+      label: "Últimos 30 dias",
+      from: new Date(now.getTime() - 29 * 864e5).toISOString().slice(0, 10),
+      to: today,
+    },
+    { label: "Este ano", from: `${y}-01-01`, to: today },
+  ];
+}
 
 export function CrmBoard({
   clientId,
   stages,
   leads,
   rules,
+  from,
+  to,
 }: {
   clientId: string;
   stages: Stage[];
   leads: Lead[];
   rules: Rule[];
+  from: string;
+  to: string;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [customFrom, setCustomFrom] = useState(from);
+  const [customTo, setCustomTo] = useState(to);
+
+  function navigate(f: string, t: string) {
+    router.push(`${pathname}?from=${f}&to=${t}`);
+  }
   // estado local otimista -- arrastar move o card na hora, sem esperar o
   // round-trip do server action. Resincroniza quando o pai re-busca os
   // dados (revalidatePath depois da action).
@@ -78,6 +121,39 @@ export function CrmBoard({
 
   return (
     <div className="space-y-6">
+      {/* filtro de período */}
+      <div className="flex flex-wrap items-end gap-2">
+        <CalendarRange className="size-4 text-muted-foreground self-center" />
+        {periodPresets().map((p) => (
+          <Button
+            key={p.label}
+            size="sm"
+            variant={from === p.from && to === p.to ? "default" : "outline"}
+            onClick={() => navigate(p.from, p.to)}
+          >
+            {p.label}
+          </Button>
+        ))}
+        <div className="flex items-center gap-1 ml-auto">
+          <Input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+          <span className="text-muted-foreground text-xs">até</span>
+          <Input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+          <Button size="sm" variant="outline" onClick={() => navigate(customFrom, customTo)}>
+            Filtrar
+          </Button>
+        </div>
+      </div>
+
       <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(220px, 1fr))` }}>
         {stages.map((stage) => (
           <div
@@ -119,6 +195,8 @@ function LeadCard({
   stages: Stage[];
 }) {
   const [pending, startTransition] = useTransition();
+  const [notes, setNotes] = useState(lead.notes ?? "");
+  const [notesPending, startNotesTrans] = useTransition();
   const cardRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -184,6 +262,28 @@ function LeadCard({
             Salvar
           </Button>
         </form>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Observação:</p>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className="w-full resize-none rounded-md border border-input bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={notesPending}
+            onClick={() =>
+              startNotesTrans(async () => {
+                await updateLeadNotes(lead.id, notes, clientId);
+                toast.success("Observação salva");
+              })
+            }
+          >
+            Salvar obs.
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

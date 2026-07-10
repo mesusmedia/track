@@ -77,8 +77,14 @@ export async function POST(request: Request) {
 
   if (adReply?.sourceId) {
     const token = await getMetaAppToken();
+    if (!token) {
+      console.error("[evolution/webhook] meta app token ausente ou expirado — campanha não resolvida para source_id:", adReply.sourceId, "client:", clientId);
+    }
     if (token) {
-      const resolved = await resolveAdFromSourceId(adReply.sourceId, token);
+      const resolved = await resolveAdFromSourceId(adReply.sourceId, token).catch((err) => {
+        console.error("[evolution/webhook] resolveAdFromSourceId falhou:", err?.message ?? err, "source_id:", adReply.sourceId);
+        return null;
+      });
       if (resolved) {
         const resolvedFields = {
           ad_id: resolved.adId,
@@ -111,7 +117,6 @@ export async function POST(request: Request) {
     .eq("client_id", clientId)
     .ilike("phone", `%${phone}%`)
     .is("campaign_name", null)
-    .is("ctwa_clid", null)
     .gte("created_at", since);
 
   return NextResponse.json({ staged: true });

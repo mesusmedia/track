@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClientLoginAction } from "@/app/admin/clients/actions";
+import { UserManageActions } from "@/components/user-manage-actions";
 
-type Login = { email: string; role: string; createdAt: string };
+type Login = { id: string; email: string; role: string; createdAt: string };
 
 export function ClientLoginAccess({ clientId, logins }: { clientId: string; logins: Login[] }) {
   const router = useRouter();
@@ -40,11 +41,12 @@ export function ClientLoginAccess({ clientId, logins }: { clientId: string; logi
       {logins.length > 0 && (
         <div className="space-y-1.5">
           {logins.map((l) => (
-            <div key={l.email} className="flex items-center justify-between text-sm border rounded-md px-3 py-2">
-              <span>{l.email}</span>
-              <span className="text-xs text-muted-foreground">
+            <div key={l.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-2 gap-3">
+              <span className="truncate">{l.email}</span>
+              <span className="text-xs text-muted-foreground shrink-0">
                 criado em {new Date(l.createdAt).toLocaleDateString("pt-BR")}
               </span>
+              <UserManageActions userId={l.id} />
             </div>
           ))}
         </div>

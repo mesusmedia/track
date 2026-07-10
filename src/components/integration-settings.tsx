@@ -22,6 +22,7 @@ import {
   removeGoogleAdsAccount,
   updateWhatsappNumber,
   updateTestEventCode,
+  updateMetaWabaId,
 } from "@/lib/integrations/actions";
 import {
   testGa4Connection,
@@ -50,6 +51,7 @@ export function IntegrationSettings({
     evolution_instance_apikey_enc: string | null;
     chatwoot_inbox_id: string | null;
     test_event_code: string | null;
+    meta_waba_id: string | null;
   };
   ga4: Account[];
   metaPixels: Account[];
@@ -155,6 +157,21 @@ export function IntegrationSettings({
                 name="test_event_code"
                 defaultValue={settings.test_event_code ?? ""}
                 placeholder="TEST12345"
+                className="font-mono text-xs"
+              />
+              <Button type="submit" size="sm">
+                Salvar
+              </Button>
+            </form>
+            <form action={updateMetaWabaId} className="space-y-2 max-w-sm">
+              <input type="hidden" name="client_id" value={clientId} />
+              <Label htmlFor="meta_waba_id">WhatsApp Business Account ID (WABA)</Label>
+              <p className="text-xs text-muted-foreground">Obrigatório para enviar eventos Lead via CAPI. Encontre em Meta Business Suite → Contas do WhatsApp → ID da conta.</p>
+              <Input
+                id="meta_waba_id"
+                name="meta_waba_id"
+                defaultValue={settings.meta_waba_id ?? ""}
+                placeholder="1046532160642193"
                 className="font-mono text-xs"
               />
               <Button type="submit" size="sm">

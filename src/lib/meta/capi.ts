@@ -7,6 +7,7 @@ type MetaUserData = {
   fbp?: string | null;
   fbc?: string | null;
   ctwaClid?: string | null;
+  wabaId?: string | null;
   clientIp?: string | null;
   clientUserAgent?: string | null;
 };
@@ -33,8 +34,13 @@ export async function sendMetaCapiEvent(params: MetaEventParams) {
   if (params.userData.fbp) userData.fbp = params.userData.fbp;
   if (params.userData.fbc) userData.fbc = params.userData.fbc;
   if (params.userData.ctwaClid) userData.ctwa_clid = params.userData.ctwaClid;
-  if (params.userData.clientIp) userData.client_ip_address = params.userData.clientIp;
-  if (params.userData.clientUserAgent) userData.client_user_agent = params.userData.clientUserAgent;
+  if (params.userData.wabaId) userData.whatsapp_business_account_id = params.userData.wabaId;
+  // business_messaging nao aceita client_ip_address nem client_user_agent --
+  // a Meta rejeita com error_subcode 2804064 se esses campos forem enviados.
+  if (params.actionSource !== "business_messaging") {
+    if (params.userData.clientIp) userData.client_ip_address = params.userData.clientIp;
+    if (params.userData.clientUserAgent) userData.client_user_agent = params.userData.clientUserAgent;
+  }
 
   const payload = {
     data: [

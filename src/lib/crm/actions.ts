@@ -47,6 +47,17 @@ export async function updateLeadRevenue(formData: FormData) {
   revalidateCrmPaths(clientId);
 }
 
+export async function updateLeadNotes(leadId: string, notes: string, clientId: string) {
+  await assertAccess(clientId);
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("leads")
+    .update({ notes: notes.trim() || null, updated_at: new Date().toISOString() })
+    .eq("id", leadId);
+  if (error) throw error;
+  revalidateCrmPaths(clientId);
+}
+
 export async function addAutomationRule(formData: FormData) {
   const clientId = String(formData.get("client_id"));
   await assertAccess(clientId);

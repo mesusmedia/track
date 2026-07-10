@@ -5,7 +5,7 @@ import { isRateLimited } from "@/lib/rate-limit";
 import { findVisitorById, extractRefCode } from "@/lib/visitors";
 import { resolveAdFromGclid } from "@/lib/google-ads/client";
 import { maybeDispatchPurchaseForLead } from "@/lib/crm/dispatch-purchase";
-import { matchesGoogleMarker } from "@/lib/ad-attribution";
+import { matchesGoogleMarker, extractGoogleCampaignFromText } from "@/lib/ad-attribution";
 import { dispatchEvent } from "@/lib/dispatch";
 import { hashPhone } from "@/lib/hash";
 
@@ -74,12 +74,15 @@ export async function POST(request: Request) {
     // verdade. Mesmo filtro que o n8n antigo fazia.
     // meta.sender é sempre o contato da conversa (nunca o agente) --
     // body.sender pode ser o agente em alguns eventos mesmo com message_type incoming
-    const contactName = String(
+    const rawName = String(
       body.conversation?.meta?.sender?.name ?? body.contact?.name ?? body.sender?.name ?? "",
     ).trim();
+    // chatwoot usa o numero como nome quando o contato nao tem nome no WhatsApp
+    const nameIsPhone = /^\+?[\d\s\-().]{7,}$/.test(rawName);
+    const contactName = nameIsPhone ? "" : rawName;
     const rawPhone = String(body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? "");
     const phoneDigits = rawPhone.replace(/\D/g, "");
-    if (contactName.toLowerCase() === "evolutionapi" || phoneDigits.length < 8) {
+    if (rawName.toLowerCase() === "evolutionapi" || phoneDigits.length < 8) {
       return NextResponse.json({ ignored: true, reason: "mensagem de sistema" });
     }
 
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
       .select("id")
       .eq("client_id", settings.client_id)
       .ilike("phone", `%${phoneDigits}%`)
-      .ilike("name", contactName)
+      .ilike("name", contactName || phoneDigits)
       .gte("created_at", dedupSince)
       .limit(1)
       .maybeSingle();
@@ -120,24 +123,50 @@ export async function POST(request: Request) {
     const phone = (body.contact?.phone_number ?? body.conversation?.meta?.sender?.phone_number ?? "")
       .replace(/\D/g, "");
     const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const { data: adData } = phone
-      ? await supabase
-          .from("ad_attribution_staging")
-          .select("source_id, ctwa_clid, ad_id, ad_name, adset_name, campaign_name, account_name")
-          .eq("client_id", settings.client_id)
-          .ilike("phone", `%${phone}%`)
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : { data: null };
+    const lookupStaging = () =>
+      supabase
+        .from("ad_attribution_staging")
+        .select("source_id, ctwa_clid, ad_id, ad_name, adset_name, campaign_name, account_name")
+        .eq("client_id", settings.client_id)
+        .ilike("phone", `%${phone}%`)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    let { data: adData } = phone ? await lookupStaging() : { data: null };
+
+    // race condition: Chatwoot pode chegar antes do Evolution processar a mensagem
+    // nativa e salvar no staging. Aguarda 1.5s e tenta de novo uma vez.
+    if (!adData && phone) {
+      await new Promise((r) => setTimeout(r, 1500));
+      ({ data: adData } = await lookupStaging());
+    }
 
     // sem dado de anuncio do Meta (staging) mas com gclid -- tenta resolver
     // via Google Ads API (click_view). Token de agencia, conta do cliente
     // precisa estar cadastrada em google_ads_accounts.customer_id. Falha
     // graciosamente (ex: Acesso Basico ainda nao aprovado pelo Google).
     let googleAdData: Awaited<ReturnType<typeof resolveAdFromGclid>> = null;
-    if (!adData?.campaign_name && visitor?.gclid) {
+    // gclid pode vir do visitor linkado por ref code OU do visitor mais recente
+    // do cliente (janela 30min) -- cobre o caso sem ref na mensagem onde o
+    // usuario clicou no /api/go/ e abriu o WhatsApp em sequencia.
+    const googleMarkerMatched = matchesGoogleMarker(content);
+    let gclid = visitor?.gclid ?? null;
+    if (!gclid && !adData?.campaign_name && googleMarkerMatched) {
+      const since30 = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: recentVisitor } = await supabase
+        .from("visitors")
+        .select("gclid")
+        .eq("client_id", settings.client_id)
+        .not("gclid", "is", null)
+        .gte("created_at", since30)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      gclid = recentVisitor?.gclid ?? null;
+    }
+    if (!adData?.campaign_name && gclid) {
       const { data: googleAccount } = await supabase
         .from("google_ads_accounts")
         .select("customer_id")
@@ -146,7 +175,7 @@ export async function POST(request: Request) {
         .limit(1)
         .maybeSingle();
       if (googleAccount) {
-        googleAdData = await resolveAdFromGclid(googleAccount.customer_id, visitor.gclid).catch(
+        googleAdData = await resolveAdFromGclid(googleAccount.customer_id, gclid).catch(
           () => null,
         );
       }
@@ -158,7 +187,6 @@ export async function POST(request: Request) {
     // marcador "vim pelo site" digitada na primeira mensagem (cliques do
     // Google sem app/script proprio). Sem isso e conversa organica direta
     // (numero salvo, indicacao, etc) -- fora do escopo desse tracking.
-    const googleMarkerMatched = matchesGoogleMarker(content);
     const hasAttribution =
       Boolean(adData?.source_id || adData?.ctwa_clid || googleAdData?.campaignName || visitor) ||
       googleMarkerMatched;
@@ -176,16 +204,16 @@ export async function POST(request: Request) {
       client_id: settings.client_id,
       conversation_external_id: conversationId,
       stage_id: firstStage?.id ?? null,
-      name: body.conversation?.meta?.sender?.name ?? body.contact?.name ?? body.sender?.name ?? null,
+      name: contactName || null,
       phone: leadPhone,
       avatar_url: avatarUrl,
       trck_user_id: visitor?.trck_user_id ?? null,
       // a frase-marcador so identifica a ORIGEM (Google) -- sem campanha
       // resolvida (ex: sem app/script proprio), nao tem outro campo onde
       // guardar isso. utm_source aqui e o que alimenta a coluna "Origem".
-      utm_source: visitor?.utm_source ?? (googleMarkerMatched ? "google" : null),
+      utm_source: visitor?.utm_source ?? (visitor?.gclid ? "google" : googleMarkerMatched ? "google" : null),
       utm_medium: visitor?.utm_medium ?? null,
-      utm_campaign: visitor?.utm_campaign ?? null,
+      utm_campaign: visitor?.utm_campaign ?? googleAdData?.campaignName ?? (googleMarkerMatched ? extractGoogleCampaignFromText(content) : null),
       source_id: adData?.source_id ?? null,
       ctwa_clid: adData?.ctwa_clid ?? null,
       ad_id: adData?.ad_id ?? googleAdData?.adId ?? null,

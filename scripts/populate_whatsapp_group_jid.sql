@@ -1,0 +1,32 @@
+-- Rodar manualmente no Supabase SQL Editor quando for implementar o fluxo n8n.
+-- Ajustar o identificador de cliente conforme o campo real da tabela clients
+-- (verificar com: select column_name from information_schema.columns where table_name='clients')
+-- Mapeamento levantado em 2026-07-03 via Evolution API listGroups.
+
+-- exemplo com slug (se a coluna for "slug"):
+-- update settings set whatsapp_group_jid = '120363423435443522@g.us'
+--   where client_id = (select id from clients where slug = 'C157-DraCristianeTiburtino');
+
+-- JIDs confirmados:
+-- C157 - Dra. Cristiane Tiburtino    → 120363423435443522@g.us
+-- C52  - Dr. Lucas Pitão             → 120363163707068447@g.us
+-- C149 - G Glow Clínica              → 120363406646250483@g.us
+-- C167 - Avante Odontologia          → 120363426526046667@g.us
+-- C136 - Integrare Odontologia       → 120363421388737494@g.us
+-- C155 - Clínica Elodonto            → 120363424747976492@g.us
+-- C150 - Lumia Odontologia           → 120363405109675498@g.us
+-- C141 - Victor Rios                 → 120363423785428320@g.us
+-- C162 - Dr. Bruno Araújo            → 120363406546128189@g.us
+-- C63  - Dr. Raphael Moreira         → 120363181088234355@g.us
+-- C140 - Espaço Bottega              → 120363404201606509@g.us
+-- C164 - Dra. Lea da Hora Galvão     → 120363408820701487@g.us
+-- C135 - Dra. Michelle Santos        → 120363400974750951@g.us
+-- C124 - Dra. Anna Oliveira          → 120363404096808061@g.us
+-- C163 - Acesso Saúde CIC            → 120363426468464552@g.us
+-- C158 - Victoriano Faces            → 120363425821582645@g.us
+-- C166 - Lucas Mallmann              → 120363424136306289@g.us
+-- C168 - Dra. Michelle Alves         → 120363412378429208@g.us
+-- C148 - Estética Los Angeles        → 120363407359971659@g.us
+-- C86  - Dr. William Henrique        → 120363239447272186@g.us
+-- C145 - Dr. Rafael Rocha            → 120363423833484317@g.us
+-- C156 - Implante & Day Clinic       → OFF BOARD (não popular)

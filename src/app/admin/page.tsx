@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, AlertTriangle } from "lucide-react";
 import { RecentLeadsTable } from "@/components/recent-leads-table";
 import { PeriodFilter } from "@/components/period-filter";
 import { AutoRefresh } from "@/components/auto-refresh";
@@ -41,7 +41,9 @@ export default async function AdminHomePage({
   );
   const maxBucket = Math.max(1, ...weekBuckets);
 
-  const [{ count: totalClients }, { data: purchases }, { data: leads30dRows }, { data: recentLeads }] =
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [{ count: totalClients }, { data: purchases }, { data: leads30dRows }, { data: recentLeads }, { data: capiErrors }] =
     await Promise.all([
       supabase.from("clients").select("id", { count: "exact", head: true }),
       supabase.from("purchases").select("valor").eq("status", "paid").gte("created_at", sinceSelected),
@@ -57,6 +59,12 @@ export default async function AdminHomePage({
         .gte("created_at", sinceSelected)
         .order("created_at", { ascending: false })
         .limit(30),
+      supabase
+        .from("events_log")
+        .select("client_id, event_name, created_at, response_meta, clients(name)")
+        .gte("created_at", since24h)
+        .not("response_meta", "is", null)
+        .order("created_at", { ascending: false }),
     ]);
 
   const totalRevenue = (purchases ?? []).reduce((sum, p) => sum + Number(p.valor ?? 0), 0);
@@ -81,6 +89,21 @@ export default async function AdminHomePage({
   }, {});
   const originBars = ORIGIN_ORDER.map((origin) => ({ origin, count: originCounts[origin] ?? 0 }));
   const maxOriginCount = Math.max(1, ...originBars.map((b) => b.count));
+
+  // agrupa erros CAPI por cliente
+  type ErrorRow = { clientName: string; count: number; lastAt: string; eventName: string };
+  const capiErrorMap: Record<string, ErrorRow> = {};
+  for (const row of capiErrors ?? []) {
+    const meta = row.response_meta as Array<{ ok: boolean }> | null;
+    const hasError = Array.isArray(meta) && meta.some((m) => !m.ok);
+    if (!hasError) continue;
+    const clientName = (row.clients as unknown as { name: string } | null)?.name ?? row.client_id;
+    if (!capiErrorMap[row.client_id]) {
+      capiErrorMap[row.client_id] = { clientName, count: 0, lastAt: row.created_at, eventName: row.event_name };
+    }
+    capiErrorMap[row.client_id].count++;
+  }
+  const capiErrorRows = Object.values(capiErrorMap).sort((a, b) => b.count - a.count);
 
   const leadRows = (recentLeads ?? []).map((lead) => ({
     id: lead.id as string,
@@ -173,7 +196,34 @@ export default async function AdminHomePage({
       </div>
 
       <AutoRefresh />
-      <RecentLeadsTable leads={leadRows} />
+
+      <div className="flex gap-4 items-start">
+        <div className="flex-1 min-w-0">
+          <RecentLeadsTable leads={leadRows} />
+        </div>
+
+        <div className="w-72 shrink-0 bg-card border rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className={`size-4 ${capiErrorRows.length > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+            <span className="text-sm font-medium">Erros CAPI (24h)</span>
+          </div>
+          {capiErrorRows.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nenhum erro nas últimas 24h.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {capiErrorRows.map((row) => (
+                <div key={row.clientName} className="py-2 space-y-0.5">
+                  <p className="text-xs font-medium truncate">{row.clientName}</p>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>{row.eventName}</span>
+                    <span className="text-amber-500 font-medium">{row.count} erro{row.count !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

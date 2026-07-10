@@ -108,6 +108,20 @@ export async function updateWhatsappNumber(formData: FormData) {
   revalidateConfigPaths(clientId);
 }
 
+export async function updateMetaWabaId(formData: FormData) {
+  const clientId = String(formData.get("client_id"));
+  await assertAccess(clientId);
+
+  const metaWabaId = String(formData.get("meta_waba_id") ?? "").trim() || null;
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({ meta_waba_id: metaWabaId, updated_at: new Date().toISOString() })
+    .eq("client_id", clientId);
+  if (error) throw error;
+  revalidateConfigPaths(clientId);
+}
+
 export async function updateTestEventCode(formData: FormData) {
   const clientId = String(formData.get("client_id"));
   await assertAccess(clientId);

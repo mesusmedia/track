@@ -41,6 +41,18 @@ export async function maybeDispatchPurchaseForLead(leadId: string, clientId: str
     .update({ capi_purchase_sent_at: new Date().toISOString() })
     .eq("id", leadId);
 
+  // registra na tabela purchases para aparecer no Faturamento
+  await supabase.from("purchases").insert({
+    client_id: clientId,
+    transaction_id: `crm_${leadId}`,
+    trck_user_id: null,
+    phone_hash: hashPhone(lead.phone),
+    valor: lead.revenue,
+    moeda: "BRL",
+    status: "paid",
+    meta_event_id: eventId,
+  });
+
   await supabase.from("events_log").insert({
     client_id: clientId,
     event_name: "Purchase",

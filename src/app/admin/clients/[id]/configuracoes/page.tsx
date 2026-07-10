@@ -25,7 +25,7 @@ export default async function AdminClientConfigPage({
   const logins = await Promise.all(
     (profiles ?? []).map(async (p) => {
       const { data } = await serviceClient.auth.admin.getUserById(p.id);
-      return { email: data?.user?.email ?? "(e-mail indisponível)", role: "client", createdAt: p.created_at };
+      return { id: p.id, email: data?.user?.email ?? "(e-mail indisponível)", role: "client", createdAt: p.created_at };
     }),
   );
 
