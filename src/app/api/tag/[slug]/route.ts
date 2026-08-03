@@ -51,7 +51,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
     t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
     document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    PIXEL_IDS.forEach(function (id) { fbq("init", id); });
+    PIXEL_IDS.forEach(function (id) { fbq("init", id, { external_id: trckUserId }); });
     fbq("track", "PageView");
   }
 
@@ -105,14 +105,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     links.forEach(function (a) {
       if (a.dataset.mesusRewritten) return;
       a.dataset.mesusRewritten = "1";
-      // preserva o texto pre-preenchido configurado na pagina
-      var originalText = new URL(a.href, location.href).searchParams.get("text");
+      // preserva telefone e texto pre-preenchido do link original
+      var parsed = new URL(a.href, location.href);
+      var originalText = parsed.searchParams.get("text");
+      var phone = parsed.pathname.replace(/\\//g, "").replace(/^\\+/, "");
       var params = new URLSearchParams();
+      if (phone) params.set("phone", phone);
       if (originalText) params.set("text", originalText);
       if (a.dataset.campaign) params.set("utm_campaign", a.dataset.campaign);
       if (a.dataset.content) params.set("utm_content", a.dataset.content);
       if (gclid) params.set("gclid", gclid);
       if (fbclid) params.set("fbclid", fbclid);
+      params.set("dest", "wa");
       var qs = params.toString();
       a.href = "https://track.mesusmedia.com.br/api/go/" + CLIENT_SLUG + (qs ? "?" + qs : "");
     });
