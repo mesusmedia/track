@@ -1,7 +1,7 @@
 import { Users, CalendarCheck, UserCheck, TrendingUp, DollarSign } from "lucide-react";
 
 type Stage = { id: string; name: string; position: number };
-type Lead = { stage_id: string | null; revenue?: number | null };
+type Lead = { stage_id: string | null; max_position: number | null; revenue?: number | null };
 
 function pct(num: number, den: number) {
   if (!den) return "—";
@@ -15,6 +15,7 @@ function findStage(stages: Stage[], keyword: string) {
 export function CrmStats({ stages, leads }: { stages: Stage[]; leads: Lead[] }) {
   const stageAgendado = findStage(stages, "agendado");
   const stageCompareceu = findStage(stages, "compareceu");
+  const stageFaltou = findStage(stages, "faltou");
   const stageVendido = findStage(stages, "vendido");
   const stagePerdido = findStage(stages, "perdido");
 
@@ -26,12 +27,28 @@ export function CrmStats({ stages, leads }: { stages: Stage[]; leads: Lead[] }) 
     : leads;
   const totalAtivos = leadsAtivos.length;
 
-  // cumulativo: conta quem está NA etapa OU em qualquer etapa depois dela
+  // posição efetiva do lead: máximo entre posição atual e histórica (max_position).
+  // Perdido e Faltou usam APENAS max_position (não a posição atual do estágio,
+  // que seria alta demais e inflaria métricas). Leads movidos de volta contam
+  // pelo histórico registrado em max_position.
+  const effPos = (l: { stage_id: string | null; max_position: number | null }) => {
+    if (!l.stage_id) return -1;
+    const isPerdido = stagePerdido && l.stage_id === stagePerdido.id;
+    const isFaltou = stageFaltou && l.stage_id === stageFaltou.id;
+    if (isPerdido || isFaltou) return l.max_position ?? 0;
+    const cur = stagePos[l.stage_id] ?? -1;
+    if (cur < 0) return -1;
+    return Math.max(cur, l.max_position ?? 0);
+  };
   const countAgendado = stageAgendado
-    ? leadsAtivos.filter((l) => l.stage_id && (stagePos[l.stage_id] ?? -1) >= stageAgendado.position).length
+    ? leads.filter((l) => effPos(l) >= stageAgendado.position).length
     : null;
+  // exclui leads em Faltou: chegaram ao agendamento mas não compareceram
   const countCompareceu = stageCompareceu
-    ? leadsAtivos.filter((l) => l.stage_id && (stagePos[l.stage_id] ?? -1) >= stageCompareceu.position).length
+    ? leads.filter((l) => {
+        if (stageFaltou && l.stage_id === stageFaltou.id) return false;
+        return effPos(l) >= stageCompareceu.position;
+      }).length
     : null;
   const countVendido = stageVendido
     ? leads.filter((l) => l.stage_id === stageVendido.id).length

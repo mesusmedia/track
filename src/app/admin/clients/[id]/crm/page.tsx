@@ -28,7 +28,7 @@ export default async function AdminClientCrmPage({
     <div className="space-y-4">
       <ClientSubNav clientId={id} clientName={client.name} />
       <CrmStats stages={stages} leads={leads} />
-      <CrmBoard clientId={id} stages={stages} leads={leads} rules={rules} from={from} to={to} />
+      <CrmBoard clientId={id} clientName={client.name} stages={stages} leads={leads} rules={rules} from={from} to={to} isAdmin />
     </div>
   );
 }

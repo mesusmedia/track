@@ -43,13 +43,13 @@ export default async function AdminHomePage({
 
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ count: totalClients }, { data: purchases }, { data: leads30dRows }, { data: recentLeads }, { data: capiErrors }] =
+  const [{ count: totalClients }, { data: purchases }, { data: leads30dRows, count: leads30dCount }, { data: recentLeads }, { data: capiErrors }] =
     await Promise.all([
       supabase.from("clients").select("id", { count: "exact", head: true }),
       supabase.from("purchases").select("valor").eq("status", "paid").gte("created_at", sinceSelected),
       supabase
         .from("leads")
-        .select("ctwa_clid, source_id, campaign_name, utm_source")
+        .select("ctwa_clid, source_id, campaign_name, utm_source", { count: "exact" })
         .gte("created_at", sinceSelected),
       supabase
         .from("leads")
@@ -76,7 +76,7 @@ export default async function AdminHomePage({
     return null;
   }
 
-  const leads30d = leads30dRows?.length ?? 0;
+  const leads30d = leads30dCount ?? 0;
   const originBucketOf = (origin: string | null) => {
     if (origin === "Meta") return "Meta";
     if (origin === "Google" || origin === "google") return "Google";

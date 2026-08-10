@@ -75,8 +75,10 @@ export async function findInstanceByName(instanceName: string) {
   const entry = Array.isArray(body) ? body[0] : body?.instance;
   if (!entry) return null;
 
+  // fallback para a global key quando a instancia nao expoe a propria apikey
+  const apikey = (entry.token ?? entry.apikey ?? process.env.EVOLUTION_GLOBAL_API_KEY) as string;
   return {
-    apikey: (entry.token ?? entry.apikey) as string,
+    apikey,
     chatwootInboxName: (entry.Chatwoot?.nameInbox ?? entry.chatwoot?.name_inbox ?? null) as
       | string
       | null,

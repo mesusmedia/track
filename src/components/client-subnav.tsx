@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, KanbanSquare, Activity, Wallet, Megaphone, Settings } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, KanbanSquare, Activity, Wallet, Megaphone, Target, Settings, MessageSquare } from "lucide-react";
 
 const TABS = [
   { slug: "visao-geral", label: "Visão geral", icon: LayoutDashboard },
   { slug: "crm", label: "CRM", icon: KanbanSquare },
+  { slug: "conversas", label: "Conversas", icon: MessageSquare },
   { slug: "eventos", label: "Eventos", icon: Activity },
   { slug: "faturamento", label: "Faturamento", icon: Wallet },
   { slug: "campanhas", label: "Campanhas", icon: Megaphone },
+  { slug: "metas", label: "Metas", icon: Target },
   { slug: "configuracoes", label: "Configurações", icon: Settings },
 ];
 

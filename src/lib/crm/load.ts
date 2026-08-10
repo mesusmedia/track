@@ -5,7 +5,7 @@ export async function loadCrmData(clientId: string, from?: string, to?: string) 
 
   let leadsQuery = supabase
     .from("leads")
-    .select("id, name, phone, stage_id, revenue, utm_source, campaign_name, adset_name, ad_name, notes, created_at")
+    .select("id, name, phone, stage_id, max_position, revenue, utm_source, utm_campaign, campaign_name, adset_name, ad_name, notes, created_at")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
   if (from) leadsQuery = leadsQuery.gte("created_at", from);

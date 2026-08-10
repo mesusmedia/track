@@ -48,7 +48,7 @@ export async function resolveAdFromGclid(customerId: string, gclid: string) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query: `SELECT campaign.name, ad_group.name, ad_group_ad.ad.id FROM click_view WHERE click_view.gclid = "${gclid}" AND segments.date = "${dateStr}" LIMIT 1`,
+          query: `SELECT campaign.name, ad_group.name, ad_group_ad.ad.id, ad_group_ad.ad.name FROM click_view WHERE click_view.gclid = "${gclid}" AND segments.date = "${dateStr}" LIMIT 1`,
         }),
       },
     );
@@ -60,6 +60,7 @@ export async function resolveAdFromGclid(customerId: string, gclid: string) {
         campaignName: row.campaign?.name as string | undefined,
         adGroupName: row.adGroup?.name as string | undefined,
         adId: row.adGroupAd?.ad?.id as string | undefined,
+        adName: (row.adGroupAd?.ad?.name || row.adGroup?.name) as string | undefined,
       };
     }
   }

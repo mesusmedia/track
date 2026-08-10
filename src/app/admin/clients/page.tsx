@@ -5,15 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NewClientDialog } from "./new-client-dialog";
 import { Settings, KanbanSquare, LayoutDashboard, Activity, Wallet, Megaphone } from "lucide-react";
+import { ToggleClientActive } from "./toggle-client-active";
 
 export default async function AdminClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; inactive?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, inactive } = await searchParams;
+  const showInactive = inactive === "1";
   const supabase = await createClient();
-  let query = supabase.from("clients").select("id, name, created_at").order("created_at", { ascending: false });
+
+  let query = supabase
+    .from("clients")
+    .select("id, name, created_at, active")
+    .eq("active", showInactive ? false : true)
+    .order("created_at", { ascending: false });
   if (q) query = query.ilike("name", `%${q}%`);
   const { data: clients } = await query;
 
@@ -23,10 +30,20 @@ export default async function AdminClientsPage({
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Clientes</h2>
           <p className="text-sm text-muted-foreground">
-            {q ? `Resultados para "${q}"` : "Todos os clientes da agência"}
+            {q ? `Resultados para "${q}"` : showInactive ? "Clientes inativos" : "Clientes ativos"}
           </p>
         </div>
-        <NewClientDialog />
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showInactive ? "secondary" : "outline"}
+            size="sm"
+            nativeButton={false}
+            render={<Link href={showInactive ? "/admin/clients" : "/admin/clients?inactive=1"} />}
+          >
+            {showInactive ? "Ver ativos" : "Ver inativos"}
+          </Button>
+          <NewClientDialog />
+        </div>
       </div>
 
       {!clients || clients.length === 0 ? (
@@ -46,61 +63,25 @@ export default async function AdminClientsPage({
                     desde {new Date(c.created_at).toLocaleDateString("pt-BR")}
                   </CardDescription>
                 </div>
-                <Badge variant="secondary">Ativo</Badge>
+                <ToggleClientActive clientId={c.id} active={c.active ?? true} />
               </CardHeader>
               <CardContent className="flex gap-1 pt-2 border-t">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  nativeButton={false}
-                  render={<Link href={`/admin/clients/${c.id}/visao-geral`} />}
-                  title="Visão geral"
-                >
+                <Button variant="ghost" size="icon" nativeButton={false} render={<Link href={`/admin/clients/${c.id}/visao-geral`} />} title="Visão geral">
                   <LayoutDashboard className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  nativeButton={false}
-                  render={<Link href={`/admin/clients/${c.id}/crm`} />}
-                  title="CRM"
-                >
+                <Button variant="ghost" size="icon" nativeButton={false} render={<Link href={`/admin/clients/${c.id}/crm`} />} title="CRM">
                   <KanbanSquare className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  nativeButton={false}
-                  render={<Link href={`/admin/clients/${c.id}/eventos`} />}
-                  title="Eventos"
-                >
+                <Button variant="ghost" size="icon" nativeButton={false} render={<Link href={`/admin/clients/${c.id}/eventos`} />} title="Eventos">
                   <Activity className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  nativeButton={false}
-                  render={<Link href={`/admin/clients/${c.id}/faturamento`} />}
-                  title="Faturamento"
-                >
+                <Button variant="ghost" size="icon" nativeButton={false} render={<Link href={`/admin/clients/${c.id}/faturamento`} />} title="Faturamento">
                   <Wallet className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  nativeButton={false}
-                  render={<Link href={`/admin/clients/${c.id}/campanhas`} />}
-                  title="Campanhas"
-                >
+                <Button variant="ghost" size="icon" nativeButton={false} render={<Link href={`/admin/clients/${c.id}/campanhas`} />} title="Campanhas">
                   <Megaphone className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  nativeButton={false}
-                  render={<Link href={`/admin/clients/${c.id}/configuracoes`} />}
-                  title="Configurações"
-                >
+                <Button variant="ghost" size="icon" nativeButton={false} render={<Link href={`/admin/clients/${c.id}/configuracoes`} />} title="Configurações">
                   <Settings className="size-4" />
                 </Button>
               </CardContent>

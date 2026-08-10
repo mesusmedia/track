@@ -214,7 +214,10 @@ npm run lint
 - `src/lib/google-ads/client.ts#resolveAdFromGclid`: consulta o recurso
   `click_view` (Google Ads API, GAQL) filtrando por `click_view.gclid` —
   **só funciona para cliques dos últimos 90 dias**, limitação da própria API,
-  não nossa.
+  não nossa. Retorna `{ campaignName, adGroupName, adId, adName }` onde
+  `adName = ad_group_ad.ad.name || ad_group.name` (fallback pro grupo se o
+  anúncio não tiver nome definido). O webhook do Chatwoot usa
+  `googleAdData?.adName` como fallback de `ad_name` quando não há dado Meta.
 - Credenciais: `GOOGLE_ADS_OAUTH_CLIENT_ID/SECRET` (Google Cloud Console),
   `GOOGLE_ADS_REFRESH_TOKEN` (gerado uma vez via OAuth Playground),
   `GOOGLE_ADS_DEVELOPER_TOKEN` + `GOOGLE_ADS_MCC_CUSTOMER_ID` (Google Ads API

@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, CalendarRange } from "lucide-react";
+import { Plus, Trash2, CalendarRange, FileDown, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   moveLeadStage,
@@ -29,6 +29,8 @@ import {
   updateLeadNotes,
   addAutomationRule,
   removeAutomationRule,
+  createLeadManual,
+  deleteLeadAction,
 } from "@/lib/crm/actions";
 
 type Stage = { id: string; name: string; position: number };
@@ -37,8 +39,10 @@ type Lead = {
   name: string | null;
   phone: string | null;
   stage_id: string | null;
+  max_position: number | null;
   revenue: number | null;
   utm_source: string | null;
+  utm_campaign: string | null;
   campaign_name: string | null;
   adset_name: string | null;
   ad_name: string | null;
@@ -76,18 +80,22 @@ function periodPresets() {
 
 export function CrmBoard({
   clientId,
+  clientName,
   stages,
   leads,
   rules,
   from,
   to,
+  isAdmin,
 }: {
   clientId: string;
+  clientName?: string;
   stages: Stage[];
   leads: Lead[];
   rules: Rule[];
   from: string;
   to: string;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -121,6 +129,53 @@ export function CrmBoard({
 
   return (
     <div className="space-y-6">
+      {/* header: novo lead + filtro */}
+      <div className="flex items-center justify-between gap-2">
+        <NewLeadDialog clientId={clientId} stages={stages} />
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const stageName = (id: string | null) => stages.find((s) => s.id === id)?.name ?? "";
+              const header = "Nome,Telefone,Etapa,Origem,Campanha,Conjunto,Anúncio,UTM Source,Receita,Criado em,Observações";
+              const lines = leadList.map((l) =>
+                [
+                  l.name ?? "",
+                  l.phone ?? "",
+                  stageName(l.stage_id),
+                  l.utm_source ?? l.campaign_name ?? "",
+                  l.campaign_name ?? "",
+                  l.adset_name ?? "",
+                  l.ad_name ?? "",
+                  l.utm_source ?? "",
+                  l.revenue ?? "",
+                  l.created_at ? new Date(l.created_at).toLocaleString("pt-BR") : "",
+                  l.notes ?? "",
+                ]
+                  .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+                  .join(","),
+              );
+              const bom = "﻿";
+              const blob = new Blob([bom + [header, ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `leads-${clientName ?? "crm"}-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <FileDown className="size-4" /> Exportar CSV
+          </Button>
+          {isAdmin && (
+            <Button size="sm" variant="outline" onClick={() => document.getElementById("relatorio-comercial")?.scrollIntoView({ behavior: "smooth" })}>
+              Relatório comercial
+            </Button>
+          )}
+        </div>
+      </div>
+
       {/* filtro de período */}
       <div className="flex flex-wrap items-end gap-2">
         <CalendarRange className="size-4 text-muted-foreground self-center" />
@@ -154,11 +209,11 @@ export function CrmBoard({
         </div>
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(220px, 1fr))` }}>
+      <div className="flex gap-3 overflow-x-auto pb-4" style={{ minWidth: 0 }}>
         {stages.map((stage) => (
           <div
             key={stage.id}
-            className={`space-y-2 rounded-lg p-1 select-none transition-colors ${dragOverStage === stage.id ? "bg-accent" : ""}`}
+            className={`flex-none w-56 space-y-2 rounded-lg p-1 select-none transition-colors ${dragOverStage === stage.id ? "bg-accent" : ""}`}
             onDragOver={(e) => {
               e.preventDefault();
               setDragOverStage(stage.id);
@@ -169,7 +224,12 @@ export function CrmBoard({
               handleDrop(stage.id, e.dataTransfer.getData("text/plain"));
             }}
           >
-            <p className="text-sm font-medium">{stage.name}</p>
+            <p className="text-sm font-medium">
+              {stage.name}
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                ({leadList.filter((l) => l.stage_id === stage.id).length})
+              </span>
+            </p>
             <div className="space-y-2">
               {leadList
                 .filter((l) => l.stage_id === stage.id)
@@ -181,6 +241,15 @@ export function CrmBoard({
         ))}
       </div>
       <AutomationRules clientId={clientId} stages={stages} rules={rules} />
+      {isAdmin && (
+        <RelatorioComercial
+          clientName={clientName ?? "Cliente"}
+          stages={stages}
+          leads={leadList}
+          from={from}
+          to={to}
+        />
+      )}
     </div>
   );
 }
@@ -213,12 +282,30 @@ function LeadCard({
       className="cursor-grab active:cursor-grabbing select-none"
     >
       <CardContent className="p-3 space-y-2">
-        <p className="text-sm font-medium">{lead.name ?? "Sem nome"}</p>
-        <p className="text-xs font-mono text-muted-foreground">{lead.phone ?? "-"}</p>
+        <div className="flex items-start justify-between gap-1">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{lead.name ?? "Sem nome"}</p>
+            <p className="text-xs font-mono text-muted-foreground">{lead.phone ?? "-"}</p>
+          </div>
+          <button
+            onClick={() => {
+              if (!confirm(`Deletar ${lead.name ?? lead.phone}? Essa ação não pode ser desfeita.`)) return;
+              startTransition(async () => {
+                await deleteLeadAction(clientId, lead.id);
+                toast.success("Lead deletado");
+              });
+            }}
+            disabled={pending}
+            className="shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
+            title="Deletar lead"
+          >
+            <Trash2 className="size-3" />
+          </button>
+        </div>
         {lead.utm_source && <Badge variant="secondary">{lead.utm_source}</Badge>}
-        {lead.campaign_name && (
+        {(lead.campaign_name || (lead.utm_campaign && lead.utm_campaign.length > 1)) && (
           <div className="text-xs text-muted-foreground space-y-0.5">
-            <p>📣 {lead.campaign_name}</p>
+            <p>📣 {lead.campaign_name ?? lead.utm_campaign}</p>
             {lead.adset_name && <p>🎯 {lead.adset_name}</p>}
             {lead.ad_name && <p>🖼️ {lead.ad_name}</p>}
           </div>
@@ -286,6 +373,61 @@ function LeadCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function NewLeadDialog({ clientId, stages }: { clientId: string; stages: Stage[] }) {
+  const [open, setOpen] = useState(false);
+  const [stageId, setStageId] = useState<string | null>(null);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="sm" />}>
+        <Plus className="size-4" /> Novo lead
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Adicionar lead manualmente</DialogTitle>
+        </DialogHeader>
+        <form
+          action={async (formData) => {
+            if (stageId) formData.set("stage_id", stageId);
+            await createLeadManual(formData);
+            toast.success("Lead adicionado");
+            setOpen(false);
+          }}
+          className="space-y-4"
+        >
+          <input type="hidden" name="client_id" value={clientId} />
+          <div className="space-y-2">
+            <Label htmlFor="nl-name">Nome</Label>
+            <Input id="nl-name" name="name" placeholder="Nome do paciente" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nl-phone">Telefone</Label>
+            <Input id="nl-phone" name="phone" placeholder="5583999990000" />
+          </div>
+          <div className="space-y-2">
+            <Label>Etapa inicial</Label>
+            <Select value={stageId ?? ""} onValueChange={setStageId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {stages.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nl-notes">Observação (opcional)</Label>
+            <Input id="nl-notes" name="notes" placeholder="Interesse em consulta de gastro..." />
+          </div>
+          <Button type="submit" className="w-full">Adicionar</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -368,6 +510,189 @@ function AutomationRules({
             </form>
           </DialogContent>
         </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
+function findStage(stages: Stage[], kw: string) {
+  return stages.find((s) => s.name.toLowerCase().includes(kw.toLowerCase()));
+}
+
+function fmtDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function pctStr(num: number, den: number) {
+  if (!den) return "0%";
+  return `${Math.round((num / den) * 100)}%`;
+}
+
+function RelatorioComercial({
+  clientName,
+  stages,
+  leads,
+  from,
+  to,
+}: {
+  clientName: string;
+  stages: Stage[];
+  leads: Lead[];
+  from: string;
+  to: string;
+}) {
+  const [obs, setObs] = useState("");
+  const [plano, setPlano] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const stagePos = Object.fromEntries(stages.map((s) => [s.id, s.position]));
+  const stagePerdido = findStage(stages, "perdido");
+  const stageAgendado = findStage(stages, "agendado");
+  const stageCompareceu = findStage(stages, "compareceu");
+  const stageVendido = findStage(stages, "vendido");
+  const stageOrcamento = findStage(stages, "orçamento");
+  const stageFaltou = findStage(stages, "faltou");
+
+  const ativos = stagePerdido ? leads.filter((l) => l.stage_id !== stagePerdido.id) : leads;
+  const total = leads.length;
+  const totalAtivos = ativos.length;
+  // mesma lógica do crm-stats: Perdido e Faltou usam max_position histórico;
+  // demais usam max(posição atual, max_position).
+  const effPos = (l: Lead) => {
+    if (!l.stage_id) return -1;
+    const isPerdido = stagePerdido && l.stage_id === stagePerdido.id;
+    const isFaltou = stageFaltou && l.stage_id === stageFaltou.id;
+    if (isPerdido || isFaltou) return l.max_position ?? 0;
+    const cur = stagePos[l.stage_id] ?? -1;
+    if (cur < 0) return -1;
+    return Math.max(cur, l.max_position ?? 0);
+  };
+  const agend = stageAgendado ? leads.filter((l) => effPos(l) >= stageAgendado.position).length : 0;
+  const comp = stageCompareceu ? leads.filter((l) => {
+    if (stageFaltou && l.stage_id === stageFaltou.id) return false;
+    return effPos(l) >= stageCompareceu.position;
+  }).length : 0;
+  const vend = stageVendido ? leads.filter((l) => l.stage_id === stageVendido.id).length : 0;
+  const orc = stageOrcamento ? leads.filter((l) => l.stage_id === stageOrcamento.id).length : 0;
+  const leadsOrc = stageOrcamento ? leads.filter((l) => l.stage_id === stageOrcamento.id) : [];
+  const leadsVendidos = stageVendido ? leads.filter((l) => l.stage_id === stageVendido.id) : [];
+  const leadsAgendados = stageAgendado ? leads.filter((l) => effPos(l) >= stageAgendado.position) : [];
+  const faltou = stageFaltou ? leads.filter((l) => l.stage_id === stageFaltou.id).length : 0;
+  const receita = leadsVendidos.reduce((acc, l) => acc + (l.revenue ?? 0), 0);
+  const receitaOportunidades = [...leadsVendidos, ...leadsOrc].reduce((acc, l) => acc + (l.revenue ?? 0), 0);
+  const oportunidades = vend + orc;
+  const receitaFmt = receita > 0 ? receita.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }) : "R$ 0";
+  const receitaOportFmt = receitaOportunidades > 0 ? receitaOportunidades.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }) : "R$ 0";
+
+  function groupCampaigns(subset: Lead[]) {
+    const map = new Map<string, number>();
+    for (const l of subset) {
+      const camp = l.campaign_name ?? l.utm_campaign ?? "Não identificada";
+      const adset = l.adset_name ? ` › ${l.adset_name}` : "";
+      const ad = l.ad_name ? ` › ${l.ad_name}` : "";
+      const key = `${camp}${adset}${ad}`;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `- ${k} (${n})`);
+  }
+
+  const campAgend = groupCampaigns(leadsAgendados);
+  const campVend = groupCampaigns(leadsVendidos);
+
+  const periodo = from === to ? fmtDate(from) : `${fmtDate(from)} a ${fmtDate(to)}`;
+
+  function buildText() {
+    return [
+      `📊 Relatório Comercial | ${clientName}`,
+      ``,
+      `Análise do período ${periodo}`,
+      ``,
+      `👥 Leads: ${total}`,
+      `📞 Agendamentos: ${agend}`,
+      `🏥 Comparecimentos: ${comp}`,
+      `💰 Vendas: ${vend}`,
+      `📄 Orçamento em Aberto: ${orc}`,
+      ``,
+      `📊 Taxa de Agendamentos: ${pctStr(agend, totalAtivos)}`,
+      `📊 Taxa de Comparecimentos: ${pctStr(comp, agend)}`,
+      ...(stageFaltou && faltou > 0 ? [`📊 Taxa de No-Show: ${pctStr(faltou, agend)}`] : []),
+      `📊 Taxa de Fechamentos (sobre comparecimentos): ${pctStr(vend, comp)}`,
+      ``,
+      `💵 Faturamento: ${receitaFmt}`,
+      `🎯 Total de oportunidades geradas: ${oportunidades} (${receitaOportFmt})`,
+      ``,
+      ...(campAgend.length ? [`📣 Campanhas que geraram agendamentos:`, ...campAgend, ``] : []),
+      ...(campVend.length ? [`🏆 Campanhas que geraram vendas:`, ...campVend, ``] : []),
+      `📉 Observações Gerais:`,
+      obs ? obs.split("\n").map((l) => `- ${l}`).join("\n") : `- `,
+      ``,
+      `✅ Plano de ação:`,
+      plano || ``,
+    ].join("\n");
+  }
+
+  function copy() {
+    navigator.clipboard.writeText(buildText()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <Card id="relatorio-comercial">
+      <CardHeader>
+        <CardTitle>Relatório Comercial</CardTitle>
+        <CardDescription>Resumo do período para envio ao cliente. Edite observações e copie o texto.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-md border bg-muted/30 p-4 font-mono text-xs whitespace-pre-wrap text-muted-foreground leading-relaxed">
+          {[
+            `📊 Relatório Comercial | ${clientName}`,
+            ``,
+            `Análise do período ${periodo}`,
+            ``,
+            `👥 Leads: ${total}`,
+            `📞 Agendamentos: ${agend}`,
+            `🏥 Comparecimentos: ${comp}`,
+            `💰 Vendas: ${vend}`,
+            `📄 Orçamento em Aberto: ${orc}`,
+            ``,
+            `📊 Taxa de Agendamentos: ${pctStr(agend, totalAtivos)}`,
+            `📊 Taxa de Comparecimentos: ${pctStr(comp, agend)}`,
+            `📊 Taxa de Fechamentos (sobre comparecimentos): ${pctStr(vend, comp)}`,
+            ``,
+            `💵 Faturamento: ${receitaFmt}`,
+            `🎯 Total de oportunidades geradas: ${oportunidades} (${receitaOportFmt})`,
+            ``,
+            ...(campAgend.length ? [`📣 Campanhas que geraram agendamentos:`, ...campAgend] : []),
+            ...(campAgend.length && campVend.length ? [`\n`] : []),
+            ...(campVend.length ? [`🏆 Campanhas que geraram vendas:`, ...campVend] : []),
+          ].join("\n")}
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">📉 Observações Gerais</p>
+          <textarea
+            value={obs}
+            onChange={(e) => setObs(e.target.value)}
+            rows={3}
+            placeholder="Identificamos queda na taxa de agendamento na terça-feira..."
+            className="w-full resize-none rounded-md border border-input bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">✅ Plano de ação</p>
+          <textarea
+            value={plano}
+            onChange={(e) => setPlano(e.target.value)}
+            rows={3}
+            placeholder={`1. Ajustar horários de veiculação\n2. Revisar criativos...`}
+            className="w-full resize-none rounded-md border border-input bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <Button size="sm" onClick={copy} className="w-full">
+          {copied ? <><Check className="size-4" /> Copiado!</> : <><Copy className="size-4" /> Copiar relatório</>}
+        </Button>
       </CardContent>
     </Card>
   );

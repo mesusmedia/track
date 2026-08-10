@@ -217,7 +217,7 @@ export async function POST(request: Request) {
       source_id: adData?.source_id ?? null,
       ctwa_clid: adData?.ctwa_clid ?? null,
       ad_id: adData?.ad_id ?? googleAdData?.adId ?? null,
-      ad_name: adData?.ad_name ?? null,
+      ad_name: adData?.ad_name ?? googleAdData?.adName ?? null,
       adset_name: adData?.adset_name ?? googleAdData?.adGroupName ?? null,
       campaign_name: adData?.campaign_name ?? googleAdData?.campaignName ?? null,
       account_name: adData?.account_name ?? null,

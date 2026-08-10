@@ -41,7 +41,7 @@ export async function createClientAction(formData: FormData) {
   if (settingsErr) throw settingsErr;
   void settings;
 
-  const defaultStages = ["Novo", "Em atendimento", "Agendado", "Compareceu", "Orçamento em aberto", "Vendido", "Perdido"];
+  const defaultStages = ["Em atendimento", "Agendado", "Compareceu", "Faltou", "Orçamento em aberto", "Vendido", "Perdido"];
   const { error: stagesErr } = await supabase.from("pipeline_stages").insert(
     defaultStages.map((name, position) => ({ client_id: client.id, name, position })),
   );
