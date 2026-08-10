@@ -1,10 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { decryptSecret, maskSecret, byteaToBuffer } from "@/lib/crypto";
 
 type Account = { id: string; label: string; masked: string; idValue: string };
 
 export async function loadIntegrationAccounts(clientId: string) {
   const supabase = await createClient();
+  // settings lida via serviceClient para não depender de RLS (bytea enc precisa
+  // ser lido mesmo quando a política de tenant não inclui o admin corretamente)
+  const serviceSupabase = createServiceClient();
 
   const [ga4, metaPixels, metaAds, googleAds, settings] = await Promise.all([
     supabase
@@ -23,10 +26,10 @@ export async function loadIntegrationAccounts(clientId: string) {
       .from("google_ads_accounts")
       .select("id, label, customer_id, refresh_token_enc")
       .eq("client_id", clientId),
-    supabase
+    serviceSupabase
       .from("settings")
       .select(
-        "webhook_token, whatsapp_number, evolution_instance_apikey_enc, chatwoot_inbox_id, test_event_code, meta_waba_id",
+        "webhook_token, whatsapp_number, landing_page_url, evolution_instance_apikey_enc, chatwoot_inbox_id, test_event_code, meta_waba_id, waba_phone_number_id",
       )
       .eq("client_id", clientId)
       .single(),
@@ -36,10 +39,12 @@ export async function loadIntegrationAccounts(clientId: string) {
     settings: settings.data ?? {
       webhook_token: "",
       whatsapp_number: "",
+      landing_page_url: null,
       evolution_instance_apikey_enc: null,
       chatwoot_inbox_id: null,
       test_event_code: null,
       meta_waba_id: null,
+      waba_phone_number_id: null,
     },
     ga4: (ga4.data ?? []).map(
       (a): Account => ({

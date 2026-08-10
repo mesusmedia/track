@@ -67,21 +67,47 @@ export async function linkExistingInstance(clientId: string, instanceName: strin
   await assertAccess(clientId);
 
   const name = instanceName.trim();
-  const found = await evolution.findInstanceByName(name);
+  let found: Awaited<ReturnType<typeof evolution.findInstanceByName>>;
+  try {
+    found = await evolution.findInstanceByName(name);
+  } catch (e) {
+    throw new Error(`Erro ao contatar Evolution API: ${e instanceof Error ? e.message : String(e)}`);
+  }
   if (!found) throw new Error(`Instância "${name}" não encontrada no servidor Evolution`);
 
   const inboxId = found.chatwootInboxName ? await findInboxIdByName(found.chatwootInboxName) : null;
 
   const supabase = createServiceClient();
-  const { error } = await supabase
+
+  // garante que settings existe antes de atualizar (pode nao existir em
+  // clientes criados fora do fluxo padrao de createClientAction)
+  const { data: existing } = await supabase
     .from("settings")
-    .update({
+    .select("client_id")
+    .eq("client_id", clientId)
+    .maybeSingle();
+
+  if (!existing) {
+    const { randomBytes } = await import("crypto");
+    const { error } = await supabase.from("settings").insert({
+      client_id: clientId,
+      webhook_token: randomBytes(24).toString("hex"),
       evolution_instance_name: name,
       evolution_instance_apikey_enc: bufferToBytea(encryptSecret(found.apikey)),
       chatwoot_inbox_id: inboxId,
-    })
-    .eq("client_id", clientId);
-  if (error) throw error;
+    });
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("settings")
+      .update({
+        evolution_instance_name: name,
+        evolution_instance_apikey_enc: bufferToBytea(encryptSecret(found.apikey)),
+        chatwoot_inbox_id: inboxId,
+      })
+      .eq("client_id", clientId);
+    if (error) throw error;
+  }
 
   revalidatePath(`/admin/clients/${clientId}/configuracoes`);
   revalidatePath("/cliente/configuracoes");
@@ -94,6 +120,32 @@ export async function getWhatsappStatus(clientId: string) {
   if (!apiKey) return { state: "not_created" };
   const state = await evolution.getConnectionState(instanceName, apiKey);
   return { state };
+}
+
+// Salva credenciais da API Oficial do WhatsApp (Meta Cloud API).
+// Muda whatsapp_mode para 'official' -- o webhook /api/webhook/whatsapp
+// passa a ser o upstream de atribuicao; o Evolution pode ser desconectado.
+export async function saveWabaConfig(
+  clientId: string,
+  phoneNumberId: string,
+  wabaId: string,
+  accessToken: string,
+) {
+  await assertAccess(clientId);
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({
+      waba_phone_number_id: phoneNumberId.trim(),
+      waba_id: wabaId.trim(),
+      waba_access_token_enc: bufferToBytea(encryptSecret(accessToken.trim())),
+      whatsapp_mode: "official",
+    })
+    .eq("client_id", clientId);
+  if (error) throw error;
+  revalidatePath(`/admin/clients/${clientId}/configuracoes`);
+  revalidatePath("/cliente/configuracoes");
+  return { saved: true };
 }
 
 export async function syncChatwootInbox(clientId: string) {

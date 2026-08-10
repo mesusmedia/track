@@ -21,6 +21,7 @@ import {
   removeIntegrationAccount,
   removeGoogleAdsAccount,
   updateWhatsappNumber,
+  updateLandingPageUrl,
   updateTestEventCode,
   updateMetaWabaId,
 } from "@/lib/integrations/actions";
@@ -48,10 +49,12 @@ export function IntegrationSettings({
   settings: {
     webhook_token: string;
     whatsapp_number: string | null;
+    landing_page_url: string | null;
     evolution_instance_apikey_enc: string | null;
     chatwoot_inbox_id: string | null;
     test_event_code: string | null;
     meta_waba_id: string | null;
+    waba_phone_number_id: string | null;
   };
   ga4: Account[];
   metaPixels: Account[];
@@ -79,6 +82,7 @@ export function IntegrationSettings({
               clientId={clientId}
               hasInstance={!!settings.evolution_instance_apikey_enc}
               chatwootInboxId={settings.chatwoot_inbox_id}
+              wabaPhoneNumberId={settings.waba_phone_number_id}
             />
           </TabsContent>
           <TabsContent value="geral" className="space-y-4 pt-4">
@@ -101,39 +105,14 @@ export function IntegrationSettings({
               <Label>Token do webhook de compra</Label>
               <Input readOnly value={settings.webhook_token} className="font-mono text-xs" />
             </div>
-            <div className="space-y-3 max-w-xl rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
-              <p className="text-sm font-medium">💡 Como instalar na landing page</p>
-              <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal pl-4">
-                <li>
-                  Copie o snippet abaixo e cole dentro do <code>{"<head>"}</code> do HTML da
-                  página — <strong>uma única vez por página</strong>, não precisa repetir.
-                </li>
-                <li>
-                  Pronto. Ele já carrega Meta Pixel + GA4 (se configurados), captura
-                  fbclid/gclid/UTMs da URL, e <strong>encontra e ajusta automaticamente todo
-                  link de WhatsApp da página</strong> (<code>wa.me</code>/<code>api.whatsapp.com</code>)
-                  pra rastrear antes de abrir o WhatsApp — não precisa editar nenhum botão.
-                </li>
-                <li>
-                  Pra eventos de conversão além do clique (ex: envio de formulário), chame{" "}
-                  <code>window.mesusTrack(&quot;Lead&quot;)</code> no evento desejado.
-                </li>
-              </ol>
-              <Input
-                readOnly
-                value={`<script src="${process.env.NEXT_PUBLIC_TRACK_DOMAIN}/api/tag/${clientSlug}" async></script>`}
-                className="font-mono text-xs bg-background"
-                onClick={(e) => e.currentTarget.select()}
-              />
-              <p className="text-xs text-muted-foreground">
-                Quer nomear a campanha/anúncio por botão de WhatsApp (opcional — sem isso, o{" "}
-                <code>gclid</code> automático do Google já funciona)? Adicione{" "}
-                <code>data-campaign</code>/<code>data-content</code> no link:
-              </p>
-              <code className="block text-xs bg-background rounded px-2 py-1.5 border">
-                {`<a href="https://wa.me/SEUNUMERO" data-campaign="Lancamento-Junho" data-content="Video-2">`}
-              </code>
-            </div>
+            {/* Landing page com tracking */}
+            <LandingPageSection
+              clientId={clientId}
+              clientSlug={clientSlug}
+              initialUrl={settings.landing_page_url ?? ""}
+            />
+
+            {/* WhatsApp direto */}
             <div className="space-y-3 max-w-xl rounded-lg border border-dashed border-orange-400/40 bg-orange-50/50 dark:bg-orange-950/20 p-4">
               <p className="text-sm font-medium">🎯 Anúncio direto no WhatsApp (sem landing page)</p>
               <p className="text-xs text-muted-foreground">
@@ -413,6 +392,100 @@ function GoogleAdsList({ clientId, accounts }: { clientId: string; accounts: Acc
           </form>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function LandingPageSection({
+  clientId,
+  clientSlug,
+  initialUrl,
+}: {
+  clientId: string;
+  clientSlug: string;
+  initialUrl: string;
+}) {
+  const [lpUrl, setLpUrl] = useState(initialUrl);
+  const [saved, setSaved] = useState(!!initialUrl);
+  const [, startTransition] = useTransition();
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    startTransition(async () => {
+      await updateLandingPageUrl(fd);
+      setSaved(!!lpUrl.trim());
+    });
+  }
+
+  const base = `https://track.mesusmedia.com.br/api/go/${clientSlug}`;
+
+  return (
+    <div className="space-y-3 max-w-xl rounded-lg border border-dashed border-blue-400/40 bg-blue-50/50 dark:bg-blue-950/20 p-4">
+      <p className="text-sm font-medium">🌐 Anúncio com Landing Page</p>
+      <p className="text-xs text-muted-foreground">
+        Quando o anúncio direciona para um site/landing page, coloque a URL da página abaixo.
+        O link de rastreamento captura UTMs e gclid/fbclid <strong>antes</strong> de redirecionar
+        para a sua página — sem perder nenhum clique.
+      </p>
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input type="hidden" name="client_id" value={clientId} />
+        <Input
+          name="landing_page_url"
+          value={lpUrl}
+          onChange={(e) => { setLpUrl(e.target.value); setSaved(false); }}
+          placeholder="https://clinicaxyz.com.br/consulta"
+          className="font-mono text-xs bg-background flex-1"
+        />
+        <Button type="submit" size="sm" variant="secondary">Salvar</Button>
+      </form>
+      {saved && lpUrl.trim() && (
+        <div className="space-y-4 pt-1">
+          {/* Google Ads */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Google Ads</p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground"><strong>1.</strong> Cole o script abaixo no <code>&lt;head&gt;</code> da landing page:</p>
+              <Input
+                readOnly
+                value={`<script src="https://track.mesusmedia.com.br/api/tag/${clientSlug}" async></script>`}
+                className="font-mono text-xs bg-background"
+                onClick={(e) => e.currentTarget.select()}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground"><strong>2.</strong> No anúncio, configure assim:</p>
+              <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 pl-1">
+                <li><strong>URL final:</strong> URL do site do cliente</li>
+                <li><strong>Modelo de rastreamento:</strong> deixar vazio</li>
+                <li><strong>Sufixo do URL final:</strong></li>
+              </ul>
+              <Input
+                readOnly
+                value="utm_source=google&utm_medium=cpc&utm_campaign={campaign}"
+                className="font-mono text-xs bg-background"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <p className="text-xs text-muted-foreground">O Google preenche <code>{"{campaign}"}</code> e injeta o <code>gclid</code> automaticamente no clique.</p>
+            </div>
+          </div>
+          {/* Meta Ads */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Meta Ads</p>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground"><strong>1.</strong> Mesmo script no <code>&lt;head&gt;</code> da landing page (se já instalou, pode pular).</p>
+              <p className="text-xs text-muted-foreground"><strong>2.</strong> Na URL do anúncio, cole como <strong>URL final</strong>:</p>
+              <Input
+                readOnly
+                value={`${lpUrl.trim()}?utm_source=facebook&utm_medium=paid&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&fbclid={{fbclid}}`}
+                className="font-mono text-xs bg-background"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <p className="text-xs text-muted-foreground">As variáveis <code>{"{{campaign.name}}"}</code> e <code>{"{{fbclid}}"}</code> são preenchidas automaticamente pelo Meta.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
