@@ -602,6 +602,12 @@ function RelatorioComercial({
 
   const periodo = from === to ? fmtDate(from) : `${fmtDate(from)} a ${fmtDate(to)}`;
 
+  function fmtLead(l: Lead) {
+    const phone = l.phone ? l.phone.replace(/^\+55/, "").replace(/(\d{2})(\d{4,5})(\d{4})/, "($1) $2-$3") : "-";
+    const val = l.revenue ? l.revenue.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }) : "";
+    return `  • ${l.name || "Sem nome"} | ${phone}${val ? ` | ${val}` : ""}`;
+  }
+
   function buildText() {
     return [
       `📊 Relatório Comercial | ${clientName}`,
@@ -622,6 +628,8 @@ function RelatorioComercial({
       `💵 Faturamento: ${receitaFmt}`,
       `🎯 Total de oportunidades geradas: ${oportunidades} (${receitaOportFmt})`,
       ``,
+      ...(leadsVendidos.length ? [`💰 Vendidos (${vend}):`, ...leadsVendidos.map(fmtLead), ``] : []),
+      ...(leadsOrc.length ? [`📄 Orçamento em Aberto (${orc}):`, ...leadsOrc.map(fmtLead), ``] : []),
       ...(campAgend.length ? [`📣 Campanhas que geraram agendamentos:`, ...campAgend, ``] : []),
       ...(campVend.length ? [`🏆 Campanhas que geraram vendas:`, ...campVend, ``] : []),
       `📉 Observações Gerais:`,
@@ -665,6 +673,8 @@ function RelatorioComercial({
             `💵 Faturamento: ${receitaFmt}`,
             `🎯 Total de oportunidades geradas: ${oportunidades} (${receitaOportFmt})`,
             ``,
+            ...(leadsVendidos.length ? [`💰 Vendidos (${vend}):`, ...leadsVendidos.map(fmtLead), ``] : []),
+            ...(leadsOrc.length ? [`📄 Orçamento em Aberto (${orc}):`, ...leadsOrc.map(fmtLead), ``] : []),
             ...(campAgend.length ? [`📣 Campanhas que geraram agendamentos:`, ...campAgend] : []),
             ...(campAgend.length && campVend.length ? [`\n`] : []),
             ...(campVend.length ? [`🏆 Campanhas que geraram vendas:`, ...campVend] : []),
