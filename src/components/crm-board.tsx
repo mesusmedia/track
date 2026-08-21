@@ -578,6 +578,7 @@ function RelatorioComercial({
   const leadsOrc = stageOrcamento ? leads.filter((l) => l.stage_id === stageOrcamento.id) : [];
   const leadsVendidos = stageVendido ? leads.filter((l) => l.stage_id === stageVendido.id) : [];
   const leadsAgendados = stageAgendado ? leads.filter((l) => effPos(l) >= stageAgendado.position) : [];
+  const leadsNaAgenda = stageAgendado ? leads.filter((l) => l.stage_id === stageAgendado.id) : [];
   const faltou = stageFaltou ? leads.filter((l) => l.stage_id === stageFaltou.id).length : 0;
   const receita = leadsVendidos.reduce((acc, l) => acc + (l.revenue ?? 0), 0);
   const receitaOportunidades = [...leadsVendidos, ...leadsOrc].reduce((acc, l) => acc + (l.revenue ?? 0), 0);
@@ -630,6 +631,7 @@ function RelatorioComercial({
       ``,
       ...(leadsVendidos.length ? [`💰 Vendidos (${vend}):`, ...leadsVendidos.map(fmtLead), ``] : []),
       ...(leadsOrc.length ? [`📄 Orçamento em Aberto (${orc}):`, ...leadsOrc.map(fmtLead), ``] : []),
+      ...(leadsNaAgenda.length ? [`📞 Agendados (${leadsNaAgenda.length}):`, ...leadsNaAgenda.map(fmtLead), ``] : []),
       ...(campAgend.length ? [`📣 Campanhas que geraram agendamentos:`, ...campAgend, ``] : []),
       ...(campVend.length ? [`🏆 Campanhas que geraram vendas:`, ...campVend, ``] : []),
       `📉 Observações Gerais:`,
@@ -675,6 +677,7 @@ function RelatorioComercial({
             ``,
             ...(leadsVendidos.length ? [`💰 Vendidos (${vend}):`, ...leadsVendidos.map(fmtLead), ``] : []),
             ...(leadsOrc.length ? [`📄 Orçamento em Aberto (${orc}):`, ...leadsOrc.map(fmtLead), ``] : []),
+            ...(leadsNaAgenda.length ? [`📞 Agendados (${leadsNaAgenda.length}):`, ...leadsNaAgenda.map(fmtLead), ``] : []),
             ...(campAgend.length ? [`📣 Campanhas que geraram agendamentos:`, ...campAgend] : []),
             ...(campAgend.length && campVend.length ? [`\n`] : []),
             ...(campVend.length ? [`🏆 Campanhas que geraram vendas:`, ...campVend] : []),
