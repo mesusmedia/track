@@ -8,6 +8,7 @@ import { maybeDispatchPurchaseForLead } from "@/lib/crm/dispatch-purchase";
 import { matchesGoogleMarker } from "@/lib/ad-attribution";
 import { dispatchEvent } from "@/lib/dispatch";
 import { hashPhone } from "@/lib/hash";
+import { backupToSheet, syncToKommo } from "@/lib/tracking/sync";
 
 // ponytail: campos seguem o formato publicamente documentado do webhook
 // "message_created" do Chatwoot -- conferir com um payload real do Chatwoot
@@ -197,6 +198,7 @@ export async function POST(request: Request) {
     // fechamento, ver dispatch-purchase.ts) disparava antes -- isso aqui
     // cobre o evento de topo de funil, importante pra otimizacao de
     // campanha no Ads Manager.
+    const campaignName = adData?.campaign_name ?? googleAdData?.campaignName ?? null;
     if (leadPhone) {
       const eventId = randomUUID();
       const result = await dispatchEvent({
@@ -215,7 +217,53 @@ export async function POST(request: Request) {
         payload_meta: result.payloadMeta,
         response_meta: result.responseMeta,
       });
+
+      // Feature C: evento separado sinalizando pro Ads Manager se esse lead
+      // tem atribuicao REAL de campanha (sourceId/ctwa_clid resolvido ou
+      // campanha do Google via click_view) ou so passou pela frase-marcador
+      // ("vim pelo site", sem campanha resolvida) -- o segundo caso ja cria
+      // lead hoje (ve hasAttribution acima) mas nao deveria contar como
+      // "qualificado" pra otimizacao de campanha no Ads Manager. Reaproveita
+      // o mesmo pixel/CAPI do evento "Lead", so troca o nome do evento --
+      // ver PR description sobre essa definicao de "qualificado".
+      const isQualified = Boolean(adData?.source_id || adData?.ctwa_clid || campaignName);
+      if (isQualified) {
+        const qualifiedEventId = randomUUID();
+        const qualifiedResult = await dispatchEvent({
+          clientId: settings.client_id,
+          eventName: "QualifiedLead",
+          eventId: qualifiedEventId,
+          ip,
+          userAgent: request.headers.get("user-agent"),
+          visitor: { ctwa_clid: adData?.ctwa_clid ?? null },
+          phoneHash: hashPhone(leadPhone),
+        });
+        await supabase.from("events_log").insert({
+          client_id: settings.client_id,
+          event_name: "QualifiedLead",
+          event_id: qualifiedEventId,
+          payload_meta: qualifiedResult.payloadMeta,
+          response_meta: qualifiedResult.responseMeta,
+        });
+      }
     }
+
+    // Feature A (backup Sheets, todo cliente) + Feature B (dual-write
+    // Kommo, só os 2 clientes com kommo_subdomain configurado) -- nunca
+    // bloqueiam a resposta do webhook, best-effort.
+    const backupLead = {
+      clientId: settings.client_id,
+      nome: body.contact?.name ?? body.sender?.name ?? null,
+      numero: leadPhone,
+      mensagem: content,
+      campanha: campaignName,
+      conjunto: adData?.adset_name ?? googleAdData?.adGroupName ?? null,
+      anuncio: adData?.ad_name ?? null,
+      adId: adData?.ad_id ?? googleAdData?.adId ?? null,
+      sourceId: adData?.source_id ?? null,
+      ctwaClid: adData?.ctwa_clid ?? null,
+    };
+    await Promise.all([backupToSheet(backupLead), syncToKommo(backupLead)]);
 
     return NextResponse.json({ lead: "created" });
   }
